@@ -1,0 +1,12 @@
+-- ARIA — Seed (Phase 0)
+-- Intentionally minimal: real user data comes from auth flows.
+-- Uncomment and adapt for local testing once auth is wired.
+
+-- Example: insert a test user directly (bypasses auth — local dev only)
+-- INSERT INTO auth.users (id, email, created_at, updated_at, raw_user_meta_data)
+-- VALUES (
+--   '00000000-0000-0000-0000-000000000001',
+--   'aria-dev@example.com',
+--   now(), now(),
+--   '{"name": "ARIA Dev"}'
+-- );

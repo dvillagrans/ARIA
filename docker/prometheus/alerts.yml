@@ -1,0 +1,29 @@
+groups:
+  - name: aria-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(aria_connector_errors_total[5m]) / rate(aria_connector_events_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Connector error rate above 5%"
+          description: "Error rate for {{ $labels.connector }} is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: HighLatencyP95
+        expr: histogram_quantile(0.95, rate(aria_chat_latency_seconds_bucket[5m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chat p95 latency above 3s"
+          description: "Chat p95 latency is {{ $value }}s over the last 5 minutes."
+
+      - alert: RAGLatencyP95
+        expr: histogram_quantile(0.95, rate(aria_rag_latency_seconds_bucket[5m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RAG p95 latency above 3s"
+          description: "RAG p95 latency is {{ $value }}s over the last 5 minutes."
