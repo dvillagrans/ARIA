@@ -53,9 +53,10 @@ function truncateReadme(text: string, maxLines: number): { text: string; truncat
 
 interface GitHubRepoPanelProps {
   repo: string;
+  className?: string;
 }
 
-export default function GitHubRepoPanel({ repo }: GitHubRepoPanelProps) {
+export default function GitHubRepoPanel({ repo, className }: GitHubRepoPanelProps) {
   const [data, setData] = useState<GitHubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export default function GitHubRepoPanel({ repo }: GitHubRepoPanelProps) {
   const hasNoData = issues.length === 0 && prs.length === 0 && readme === null;
 
   return (
-    <div className="flex flex-col gap-4 mt-6 max-w-2xl">
+    <div className={className ?? "flex flex-col gap-4 mt-6 max-w-2xl"}>
       {/* Repo meta bar */}
       {repoMeta && (
         <div className="flex flex-col gap-1">

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProjectTabs from "@/components/projects/ProjectTabs";
+import ProjectSplitLayout from "@/components/projects/ProjectSplitLayout";
 
 export default async function ProjectLayout({
   children,
@@ -11,7 +12,7 @@ export default async function ProjectLayout({
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, name, color")
+    .select("id, name, color, context, github_repo")
     .eq("id", id)
     .single();
 
@@ -28,11 +29,21 @@ export default async function ProjectLayout({
             />
             <h1 className="text-sm font-semibold truncate">{project.name}</h1>
           </div>
-          <ProjectTabs projectId={project.id} />
+          <div className="lg:hidden">
+            <ProjectTabs projectId={project.id} />
+          </div>
         </div>
       </header>
 
-      <div className="flex flex-col flex-1 min-h-0">{children}</div>
+      <ProjectSplitLayout
+        projectId={project.id}
+        projectName={project.name}
+        projectColor={project.color}
+        projectContext={(project as Record<string, unknown>).context as string | null ?? null}
+        projectGithubRepo={(project as Record<string, unknown>).github_repo as string | null ?? null}
+      >
+        {children}
+      </ProjectSplitLayout>
     </main>
   );
 }
