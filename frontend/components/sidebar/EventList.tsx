@@ -282,7 +282,7 @@ export default function EventList({ userId, initialEvents = [] }: EventListProps
           <button
             onClick={syncFromGoogle}
             disabled={isSyncing}
-            className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent transition-colors disabled:opacity-50"
             title="Import from Google Calendar"
           >
             <CalendarSync className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
@@ -304,43 +304,38 @@ export default function EventList({ userId, initialEvents = [] }: EventListProps
               const hasMore = group.events.length > 3;
 
               return (
-                <div key={group.date}>
-                  <div className="flex items-center justify-between px-2.5 mb-1">
-                    <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
+                <div key={group.date} className="relative pl-3">
+                  {/* 1px vertical rail */}
+                  <div className="absolute left-3 top-0 bottom-0 w-px bg-bg-elevated" />
+
+                  <div className="flex items-center gap-2 px-2.5 mb-1 ml-0">
+                    <p className="text-[10px] font-medium text-text-muted uppercase tracking-widest">
                       {group.label}
                     </p>
-                    <span className="text-xs text-text-muted/50">{group.events.length}</span>
+                    <span className="text-[10px] text-text-muted/40">{group.events.length}</span>
                   </div>
                   <ul className="space-y-0.5">
-                    {visibleEvents.map((event) => (
-                      <li key={event.id}>
-                        <button
-                          onClick={() => openDetail(event)}
-                          className="w-full flex items-start gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group text-left"
-                        >
-                          <div
-                            className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 border ${getEventColor(event.type)}`}
+                    {visibleEvents.map((event) => {
+                      const isToday = group.label === "Today";
+                      return (
+                        <li key={event.id}>
+                          <button
+                            onClick={() => openDetail(event)}
+                            className="w-full flex items-start gap-2 px-2.5 py-1 transition-opacity duration-100 opacity-70 hover:opacity-100 text-left"
                           >
-                            {getEventIcon(event.type)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
-                              {event.title}
-                            </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <Clock className="h-3 w-3 text-text-muted" />
-                              <p className="text-xs text-text-muted">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] text-text-primary truncate">
+                                {event.title}
+                              </p>
+                              <p className={`text-[11px] ${isToday ? "text-accent" : "text-text-muted"}`}>
                                 {formatTime(event.starts_at)}
                                 {event.duration_min > 0 && ` · ${formatDuration(event.duration_min)}`}
                               </p>
-                              {event.source === "google_calendar" && (
-                                <span className="inline-block w-1 h-1 rounded-full bg-accent/60" aria-label="Google Calendar" />
-                              )}
                             </div>
-                          </div>
-                        </button>
-                      </li>
-                    ))}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                   {hasMore && (
                     <button
@@ -352,9 +347,9 @@ export default function EventList({ userId, initialEvents = [] }: EventListProps
                           return next;
                         })
                       }
-                      className="w-full text-center py-1 text-xs text-text-muted hover:text-accent transition-colors"
+                      className="w-full text-left px-2.5 py-1 text-[11px] text-text-muted hover:text-accent transition-colors duration-100"
                     >
-                      {isExpanded ? "Show less" : `+${group.events.length - 3} more`}
+                      {isExpanded ? "show less" : `+${group.events.length - 3} more`}
                     </button>
                   )}
                 </div>

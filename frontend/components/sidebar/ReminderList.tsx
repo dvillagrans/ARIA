@@ -184,7 +184,7 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
         return (
           <li
             key={reminder.id}
-            className="px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group"
+            className="px-2.5 py-1.5 transition-opacity duration-100 opacity-80 hover:opacity-100 group"
           >
             {isEditing ? (
               <div className="flex flex-col gap-1.5">
@@ -221,7 +221,7 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
             ) : (
               <>
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors flex-1">
+                  <p className="text-[13px] text-text-primary truncate flex-1">
                     {reminder.title}
                   </p>
                   {reminder.calendar_event_id && (
@@ -229,16 +229,20 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-xs text-text-muted">
-                    {new Date(reminder.due_at).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {reminder.amount != null &&
-                      ` · ${reminder.currency ?? ""} ${reminder.amount}`}
-                  </p>
+                  {(() => {
+                    const isUrgent = new Date(reminder.due_at).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+                    return (
+                      <p className={`text-[11px] tabular-nums ${isUrgent ? "text-accent" : "text-text-muted"}`}>
+                        {new Date(reminder.due_at).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {reminder.amount != null && ` · ${reminder.currency ?? ""} ${reminder.amount}`}
+                      </p>
+                    );
+                  })()}
                   <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(reminder)}

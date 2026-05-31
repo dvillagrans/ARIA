@@ -49,7 +49,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto p-4 md:px-6 scrollbar-thin">
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-6 md:px-8 scrollbar-thin">
       {/* Initial loading skeleton — outside AnimatePresence to avoid key collision */}
       {isLoading && messages.length === 0 && (
         <div className="flex flex-1 flex-col gap-3">
@@ -68,47 +68,67 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
       <AnimatePresence initial={false}>
         {messages.map((msg, i) => {
           const isUser = msg.role === "user";
-          const showTime = i === 0 || messages[i - 1]?.role !== msg.role || i === messages.length - 1;
+          const isFirstInTurn = i === 0 || messages[i - 1]?.role !== msg.role;
+          const isStreaming = isLoading && i === messages.length - 1 && msg.role === "assistant";
+          const showTime = isFirstInTurn;
 
           return (
             <motion.div
               key={msg.id}
               layout
               {...messageAnimation}
-              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+              className={`flex flex-col ${isUser ? "items-end" : "items-start"} mb-4`}
             >
-              <div className={`max-w-[85%] sm:max-w-[80%] md:max-w-[70%] ${isUser ? "order-1" : ""}`}>
+              {/* ARIA › label — only for first assistant message in a sequence */}
+              {!isUser && isFirstInTurn && (
+                <span className="text-[11px] text-accent mb-1 select-none">ARIA ›</span>
+              )}
+
+              {isUser ? (
+                /* User: code-block style */
                 <div
-                  className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
-                    isUser
-                      ? "bg-accent text-white rounded-2xl"
-                      : "bg-bg-surface border border-border-subtle text-text-primary rounded-2xl"
-                  }`}
+                  className="max-w-[85%] sm:max-w-[80%] md:max-w-[70%]"
+                  style={{
+                    background: "#18181b",
+                    borderLeft: "2px solid #10b981",
+                    borderRadius: "2px",
+                    padding: "12px 16px",
+                  }}
                 >
-                  {msg.content}
-                </div>
-                {showTime && (
-                  <p className={`text-xs px-1 text-text-muted mt-1 ${isUser ? "text-right" : "text-left"}`}>
-                    {formatTime(msg.created_at ? new Date(msg.created_at) : new Date())}
+                  <p className="text-[13px] text-text-primary leading-relaxed whitespace-pre-wrap break-words">
+                    {msg.content}
                   </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Assistant: plain text, no bubble */
+                <div className="max-w-[90%] md:max-w-[80%]">
+                  <p className="text-[13px] text-text-primary leading-relaxed whitespace-pre-wrap break-words">
+                    {msg.content}
+                    {isStreaming && <span className="cursor-blink">█</span>}
+                  </p>
+                </div>
+              )}
+
+              {showTime && (
+                <p className={`text-[11px] text-text-muted mt-1 ${isUser ? "text-right" : "text-left"}`}>
+                  {formatTime(msg.created_at ? new Date(msg.created_at) : new Date())}
+                </p>
+              )}
             </motion.div>
           );
         })}
 
-        {/* Typing / loading indicator */}
-        {isLoading && messages.length > 0 && (
+        {/* Loading dots indicator — shown when waiting for assistant response */}
+        {isLoading && messages.length > 0 && messages[messages.length - 1].role !== "assistant" && (
           <motion.div
-            key="typing-indicator"
+            key="loading-dots"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start"
+            className="flex items-start mb-4"
           >
-            <div className="bg-bg-surface border border-border-subtle rounded-2xl px-4 py-3 flex items-center gap-1.5">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
+            <span className="text-[11px] text-accent mr-2">ARIA ›</span>
+            <div className="loading-dots">
+              <span /><span /><span />
             </div>
           </motion.div>
         )}

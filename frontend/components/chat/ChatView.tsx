@@ -213,10 +213,10 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
             {isProjectChat ? projectName : "ARIA"}
           </h1>
           {isProjectChat ? (
-            <p className="text-xs text-text-muted">Project chat</p>
+            <p className="text-[11px] text-text-muted">Project chat</p>
           ) : (
             !isOnline && (
-              <p className="text-xs" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
+              <p className="text-[11px]" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
             )
           )}
         </div>

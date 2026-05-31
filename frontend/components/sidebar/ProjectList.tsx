@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { FolderOpen, Plus, X } from "lucide-react";
+import { FolderOpen, X } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -97,10 +97,10 @@ export default function ProjectList({ projects }: ProjectListProps) {
       <div className="flex items-center justify-end px-4 mb-1">
         <button
           onClick={() => setShowModal(true)}
-          className="p-1 rounded-md hover:bg-bg-elevated transition-colors text-text-muted hover:text-text-primary"
+          className="text-[11px] text-text-muted hover:text-accent transition-colors px-1.5 py-0.5"
           title="New project"
         >
-          <Plus className="h-3.5 w-3.5" />
+          + New
         </button>
       </div>
 
@@ -119,21 +119,19 @@ export default function ProjectList({ projects }: ProjectListProps) {
               <li key={project.id}>
                 <Link
                   href={href}
-                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-colors group ${
-                    isActive
-                      ? "bg-bg-elevated text-text-primary"
-                      : "hover:bg-bg-elevated text-text-secondary hover:text-text-primary"
+                  className={`flex items-center justify-between px-3 py-1.5 transition-opacity duration-100 ${
+                    isActive ? "opacity-100" : "opacity-70 hover:opacity-100"
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
                       style={{ backgroundColor: project.color }}
                     />
-                    <span className="text-sm truncate">{project.name}</span>
+                    <span className="text-[13px] text-text-primary truncate">{project.name}</span>
                   </div>
                   {(taskCounts[project.id] ?? 0) > 0 && (
-                    <span className="ml-2 shrink-0 text-xs tabular-nums bg-accent/20 text-accent rounded-full px-1.5 py-0.5 font-medium leading-none">
+                    <span className="ml-2 shrink-0 text-[11px] text-text-muted tabular-nums">
                       {taskCounts[project.id]}
                     </span>
                   )}
@@ -162,13 +160,13 @@ export default function ProjectList({ projects }: ProjectListProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 8 }}
               transition={{ type: "spring", duration: 0.25 }}
-              className="fixed left-4 top-1/3 -translate-y-1/2 w-64 bg-bg-surface border border-bg-elevated rounded-2xl p-5 z-50 shadow-2xl"
+              className="fixed left-4 top-1/3 -translate-y-1/2 w-64 bg-bg-surface border border-bg-elevated rounded-sm p-5 z-50 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold">New project</h2>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="p-1 rounded-lg hover:bg-bg-elevated transition-colors"
+                  className="p-1 rounded-sm hover:bg-bg-elevated transition-colors"
                 >
                   <X className="h-4 w-4 text-text-muted" />
                 </button>
@@ -180,7 +178,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Project name"
-                className="w-full rounded-lg border border-bg-elevated bg-bg-root px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 mb-4"
+                className="w-full rounded-sm border border-bg-elevated bg-bg-root px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 mb-4"
               />
 
               <p className="text-xs uppercase tracking-widest text-text-muted mb-2">Color</p>
@@ -202,7 +200,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
               <button
                 onClick={handleCreate}
                 disabled={!newName.trim() || creating}
-                className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full rounded-sm bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {creating ? "Creating…" : "Create"}
               </button>

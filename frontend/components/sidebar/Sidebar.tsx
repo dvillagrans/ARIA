@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { FolderKanban, Calendar, Bell, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import ProjectList, { Project } from "./ProjectList";
 import EventList, { CalendarEvent } from "./EventList";
 import ReminderList, { Reminder } from "./ReminderList";
@@ -15,7 +15,7 @@ interface SidebarProps {
   initialReminders?: Reminder[];
 }
 
-const sectionTitle = "px-4 mb-1.5 text-xs font-semibold uppercase tracking-widest text-text-muted";
+const sectionTitle = "px-3 mb-1 text-[10px] font-medium uppercase tracking-widest text-text-muted";
 
 export default function Sidebar({
   userId,
@@ -25,11 +25,11 @@ export default function Sidebar({
   initialReminders = [],
 }: SidebarProps) {
   return (
-    <aside className="flex flex-col w-64 lg:w-72 shrink-0 bg-bg-surface border-r border-border-subtle h-full">
+    <aside className="flex flex-col w-[220px] shrink-0 bg-bg-surface border-r border-bg-elevated h-full">
       {/* Brand header */}
       <Link
         href="/chat"
-        className="shrink-0 flex items-center gap-2.5 px-4 py-3 border-b border-border-subtle hover:bg-bg-elevated/50 transition-colors"
+        className="shrink-0 flex items-center gap-2.5 px-4 py-3 border-b border-bg-elevated hover:opacity-70 transition-opacity duration-100"
       >
         <img src="/logo.svg" alt="ARIA" className="w-7 h-7 rounded-lg" />
         <span className="text-sm font-semibold">ARIA</span>
@@ -44,16 +44,11 @@ export default function Sidebar({
           transition={{ delay: 0.05 }}
           className="py-3"
         >
-          <h2 className={sectionTitle}>
-            <span className="flex items-center gap-1.5">
-              <FolderKanban className="h-3 w-3" />
-              Projects
-            </span>
-          </h2>
+          <h2 className={sectionTitle}>Projects</h2>
           <ProjectList projects={projects} />
         </motion.section>
 
-        <div className="border-t border-border-subtle mx-3" />
+        <div className="border-t border-bg-elevated mx-3" />
 
         {/* Events */}
         <motion.section
@@ -62,16 +57,11 @@ export default function Sidebar({
           transition={{ delay: 0.1 }}
           className="py-3"
         >
-          <h2 className={sectionTitle}>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="h-3 w-3" />
-              Upcoming
-            </span>
-          </h2>
+          <h2 className={sectionTitle}>Upcoming</h2>
           <EventList userId={userId} initialEvents={initialEvents} />
         </motion.section>
 
-        <div className="border-t border-border-subtle mx-3" />
+        <div className="border-t border-bg-elevated mx-3" />
 
         {/* Reminders */}
         <motion.section
@@ -80,12 +70,7 @@ export default function Sidebar({
           transition={{ delay: 0.15 }}
           className="py-3"
         >
-          <h2 className={sectionTitle}>
-            <span className="flex items-center gap-1.5">
-              <Bell className="h-3 w-3" />
-              Reminders
-            </span>
-          </h2>
+          <h2 className={sectionTitle}>Reminders</h2>
           <ReminderList userId={userId} initialReminders={initialReminders} />
         </motion.section>
       </div>
@@ -93,7 +78,7 @@ export default function Sidebar({
       {/* Profile footer */}
       <Link
         href="/profile"
-        className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-border-subtle hover:bg-bg-elevated/60 transition-colors focus-ring"
+        className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-bg-elevated hover:opacity-70 transition-opacity duration-100 focus-ring"
       >
         <div className="w-8 h-8 rounded-full bg-accent-muted flex items-center justify-center shrink-0">
           <span className="text-sm font-semibold text-accent">{userEmail.charAt(0).toUpperCase()}</span>
