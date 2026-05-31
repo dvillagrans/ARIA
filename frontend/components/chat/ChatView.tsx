@@ -195,7 +195,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
   ];
 
   return (
-    <main className="flex flex-col h-full bg-bg-root text-text-primary">
+    <main className="flex flex-col flex-1 min-h-0 bg-bg-root text-text-primary">
       {/* Header */}
       <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
         {isProjectChat ? (
