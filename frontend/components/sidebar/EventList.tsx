@@ -299,7 +299,6 @@ export default function EventList({
               </div>
             );
           })}
-          ))}
         </div>
       )}
     </div>
