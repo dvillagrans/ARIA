@@ -31,6 +31,7 @@ interface ActivityItem {
   id: string;
   title: string;
   starts_at: string;
+  duration_min: number;
   type: string;
   source: string;
 }
@@ -58,23 +59,114 @@ interface Props {
   projectGithubRepo: string | null;
 }
 
+// ── Date helpers ─────────────────────────────────────────────────────────────
+
+function startOfDay(d: Date): Date {
+  const s = new Date(d);
+  s.setHours(0, 0, 0, 0);
+  return s;
+}
+
+function addDays(d: Date, n: number): Date {
+  const s = new Date(d);
+  s.setDate(s.getDate() + n);
+  return s;
+}
+
+function localDayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLowerCase()
+    .replace(/\s/, "");
+}
+
+function formatDuration(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = d.getTime() - now.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+interface DayGroup {
+  key: string;
+  weekday: string;    // "WEDNESDAY"
+  dateLabel: string;  // "Jun 4"
+  events: ActivityItem[];
+}
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Tomorrow";
-  if (diffDays === -1) return "Yesterday";
-  if (diffDays > 0 && diffDays < 7) return `in ${diffDays}d`;
-  if (diffDays < 0 && diffDays > -7) return `${Math.abs(diffDays)}d ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function groupByDay(events: ActivityItem[]): DayGroup[] {
+  const map = new Map<string, ActivityItem[]>();
+  for (const e of events) {
+    const k = localDayKey(new Date(e.starts_at));
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(e);
+  }
+  return [...map.entries()].map(([key, evts]) => {
+    const d = new Date(key + "T12:00:00");
+    return {
+      key,
+      weekday: d.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase(),
+      dateLabel: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      events: evts,
+    };
+  });
+}
+
+function bucketActivity(events: ActivityItem[]) {
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const tomorrowStart = addDays(todayStart, 1);
+  const dayAfterTomorrow = addDays(todayStart, 2);
+  const weekEnd = addDays(todayStart, 7);
+
+  const today: ActivityItem[] = [];
+  const tomorrow: ActivityItem[] = [];
+  const thisWeekRaw: ActivityItem[] = [];
+  const beyondRaw: ActivityItem[] = [];
+
+  for (const e of events) {
+    const d = new Date(e.starts_at);
+    if (d < tomorrowStart) today.push(e);
+    else if (d < dayAfterTomorrow) tomorrow.push(e);
+    else if (d < weekEnd) thisWeekRaw.push(e);
+    else beyondRaw.push(e);
+  }
+
+  return {
+    today,
+    tomorrow,
+    thisWeek: groupByDay(thisWeekRaw),
+    beyond: groupByDay(beyondRaw),
+  };
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function EventRow({ event }: { event: ActivityItem }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 border-t border-[#27272A]">
+      <span className="text-[10px] font-mono text-text-muted shrink-0 w-14 text-right">
+        {formatTime(event.starts_at)}
+      </span>
+      <span className="text-xs text-text-primary truncate flex-1">{event.title}</span>
+      <span className="text-[10px] text-text-muted shrink-0">
+        {formatDuration(event.duration_min)}
+      </span>
+    </div>
+  );
 }
 
 function statusBadgeClass(status: string): string {
@@ -119,6 +211,8 @@ function Section({ id, label, icon: Icon, collapsed, onToggle, noPadding, childr
   );
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function InfoSidePanel({
   projectId,
   projectName,
@@ -127,6 +221,7 @@ export default function InfoSidePanel({
   projectGithubRepo,
 }: Props) {
   const sectionsKey = "aria-panel-sections-" + projectId;
+  const activityKey = "aria-activity-" + projectId;
 
   const [sectionCollapse, setSectionCollapse] = useState<SectionCollapse>({
     overview: false,
@@ -137,6 +232,9 @@ export default function InfoSidePanel({
     documents: false,
   });
 
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [showBeyond, setShowBeyond] = useState(false);
+
   const [panelData, setPanelData] = useState<PanelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
@@ -144,21 +242,27 @@ export default function InfoSidePanel({
   useEffect(() => {
     try {
       const stored = localStorage.getItem(sectionsKey);
-      if (stored) {
-        setSectionCollapse((prev) => ({ ...prev, ...JSON.parse(stored) }));
-      }
-    } catch {
-      // ignore parse errors
-    }
+      if (stored) setSectionCollapse((prev) => ({ ...prev, ...JSON.parse(stored) }));
+    } catch {}
   }, [sectionsKey]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(activityKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.days)) setExpandedDays(new Set(parsed.days as string[]));
+        if (typeof parsed.beyond === "boolean") setShowBeyond(parsed.beyond);
+      }
+    } catch {}
+  }, [activityKey]);
 
   useEffect(() => {
     setLoading(true);
     fetch("/api/projects/" + projectId + "/panel")
       .then(async (res) => {
         if (!res.ok) return;
-        const json = await res.json();
-        setPanelData(json as PanelData);
+        setPanelData((await res.json()) as PanelData);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -167,11 +271,29 @@ export default function InfoSidePanel({
   function toggleSection(id: keyof SectionCollapse) {
     setSectionCollapse((prev) => {
       const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem(sectionsKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  function toggleDay(dayKey: string) {
+    setExpandedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) next.delete(dayKey);
+      else next.add(dayKey);
       try {
-        localStorage.setItem(sectionsKey, JSON.stringify(next));
-      } catch {
-        // ignore storage errors
-      }
+        localStorage.setItem(activityKey, JSON.stringify({ days: [...next], beyond: showBeyond }));
+      } catch {}
+      return next;
+    });
+  }
+
+  function handleToggleBeyond() {
+    setShowBeyond((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(activityKey, JSON.stringify({ days: [...expandedDays], beyond: next }));
+      } catch {}
       return next;
     });
   }
@@ -193,32 +315,20 @@ export default function InfoSidePanel({
     <div className="flex flex-col h-full overflow-y-auto scrollbar-thin bg-bg-root">
       {/* Panel header */}
       <div className="shrink-0 flex items-center gap-2 px-3 h-10 border-b border-[#27272A] bg-bg-surface/50 sticky top-0 z-10">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: projectColor }}
-        />
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: projectColor }} />
         <span className="text-xs font-medium text-text-secondary truncate">{projectName}</span>
       </div>
 
       {/* Sections */}
       <div className="flex flex-col divide-y divide-[#27272A]">
+
         {/* Overview */}
-        <Section
-          id="overview"
-          label="Overview"
-          icon={FileText}
-          collapsed={sectionCollapse.overview}
-          onToggle={toggleSection}
-        >
+        <Section id="overview" label="Overview" icon={FileText} collapsed={sectionCollapse.overview} onToggle={toggleSection}>
           <div className="space-y-1.5 pt-0.5">
             {projectContext ? (
-              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
-                {projectContext}
-              </p>
+              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{projectContext}</p>
             ) : (
-              <p className="text-xs text-text-muted italic">
-                No description yet. Add one in the Info tab.
-              </p>
+              <p className="text-xs text-text-muted italic">No description yet. Add one in the Info tab.</p>
             )}
           </div>
         </Section>
@@ -233,27 +343,19 @@ export default function InfoSidePanel({
         >
           {loading ? (
             <div className="space-y-1.5 pt-0.5">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />
-              ))}
+              {[0, 1, 2].map((i) => <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />)}
             </div>
           ) : !taskStats || taskStats.total === 0 ? (
             <p className="text-xs text-text-muted pt-0.5">No tasks for this project.</p>
           ) : (
             <div className="pt-0.5 space-y-2">
-              {/* Status pills */}
               <div className="flex flex-wrap gap-1">
                 {Object.entries(taskStats.byStatus).map(([status, count]) => (
-                  <span
-                    key={status}
-                    className={`px-1.5 py-0.5 text-[10px] rounded-sm border ${statusBadgeClass(status)}`}
-                  >
+                  <span key={status} className={`px-1.5 py-0.5 text-[10px] rounded-sm border ${statusBadgeClass(status)}`}>
                     {status} · {count}
                   </span>
                 ))}
               </div>
-
-              {/* Full task list */}
               <div className="border border-border-subtle rounded-sm overflow-hidden">
                 {taskStats.all.map((task, i) => {
                   const isDone = task.status === "done" || task.status === "completed";
@@ -262,13 +364,7 @@ export default function InfoSidePanel({
                       key={task.id}
                       className={`flex items-start gap-2 px-2.5 py-1.5 ${i > 0 ? "border-t border-border-subtle" : ""} ${isDone ? "opacity-40" : ""}`}
                     >
-                      <span
-                        className={`shrink-0 text-[10px] px-1 rounded-sm mt-0.5 ${
-                          task.priority <= 2
-                            ? "bg-red-950 text-red-400"
-                            : "bg-bg-elevated text-text-muted"
-                        }`}
-                      >
+                      <span className={`shrink-0 text-[10px] px-1 rounded-sm mt-0.5 ${task.priority <= 2 ? "bg-red-950 text-red-400" : "bg-bg-elevated text-text-muted"}`}>
                         P{task.priority}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -281,10 +377,7 @@ export default function InfoSidePanel({
                           </span>
                           {task.deadline && (
                             <span className="text-[10px] text-text-muted">
-                              {new Date(task.deadline).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
+                              {new Date(task.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                             </span>
                           )}
                         </div>
@@ -298,28 +391,17 @@ export default function InfoSidePanel({
         </Section>
 
         {/* Notes */}
-        <Section
-          id="notes"
-          label="Notes"
-          icon={FileText}
-          collapsed={sectionCollapse.notes}
-          onToggle={toggleSection}
-        >
+        <Section id="notes" label="Notes" icon={FileText} collapsed={sectionCollapse.notes} onToggle={toggleSection}>
           {loading ? (
             <div className="space-y-1.5 pt-0.5">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />
-              ))}
+              {[0, 1, 2].map((i) => <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />)}
             </div>
           ) : notes.length === 0 ? (
             <p className="text-xs text-text-muted pt-0.5">No notes yet.</p>
           ) : (
             <div className="pt-0.5">
               {notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="text-xs border border-border-subtle rounded-sm overflow-hidden mb-1.5"
-                >
+                <div key={note.id} className="text-xs border border-border-subtle rounded-sm overflow-hidden mb-1.5">
                   <button
                     onClick={() => toggleNote(note.id)}
                     className="w-full text-left px-2.5 py-1.5 hover:bg-bg-elevated transition-colors"
@@ -329,9 +411,7 @@ export default function InfoSidePanel({
                   </button>
                   {expandedNotes.has(note.id) && (
                     <div className="px-2.5 pb-2 border-t border-border-subtle">
-                      <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-wrap">
-                        {note.content}
-                      </p>
+                      <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-wrap">{note.content}</p>
                     </div>
                   )}
                 </div>
@@ -353,8 +433,7 @@ export default function InfoSidePanel({
             <GitHubRepoPanel repo={projectGithubRepo} className="flex flex-col gap-3" />
           ) : (
             <p className="text-xs text-text-muted pt-0.5">
-              No repository linked. Add one in the{" "}
-              <span className="text-accent">Info</span> tab.
+              No repository linked. Add one in the <span className="text-accent">Info</span> tab.
             </p>
           )}
         </Section>
@@ -366,51 +445,96 @@ export default function InfoSidePanel({
           icon={Activity}
           collapsed={sectionCollapse.activity}
           onToggle={toggleSection}
+          noPadding
         >
           {loading ? (
-            <div className="space-y-1.5 pt-0.5">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />
-              ))}
+            <div className="px-3 pb-2 pt-0.5 space-y-1.5">
+              {[0, 1, 2].map((i) => <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />)}
             </div>
           ) : activity.length === 0 ? (
-            <p className="text-xs text-text-muted pt-0.5">No recent activity.</p>
-          ) : (
-            <div className="pt-0.5 flex flex-col gap-0">
-              {activity.map((item, i) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-2.5 py-1.5 relative"
-                >
-                  {/* Timeline line */}
-                  {i < activity.length - 1 && (
-                    <div className="absolute left-[5px] top-4 bottom-0 w-px bg-border-subtle" />
-                  )}
-                  {/* Dot */}
-                  <div className="w-2.5 h-2.5 rounded-full border border-border-subtle bg-bg-elevated shrink-0 mt-0.5 z-10" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-text-primary truncate">{item.title}</p>
-                    <p className="text-[10px] text-text-muted">{formatDateTime(item.starts_at)}</p>
+            <p className="px-3 pb-2 pt-0.5 text-xs text-text-muted">No upcoming events.</p>
+          ) : (() => {
+            const { today: todayEvts, tomorrow: tomorrowEvts, thisWeek, beyond } = bucketActivity(activity);
+            const hasBeyond = beyond.length > 0;
+            const beyondDayCount = beyond.length;
+
+            return (
+              <div className="pb-1">
+                {/* Today — always expanded */}
+                {todayEvts.length > 0 && (
+                  <div>
+                    <div className="px-3 py-1.5 border-t border-[#27272A]">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+                        Today · {todayEvts.length}
+                      </span>
+                    </div>
+                    {todayEvts.map((e) => <EventRow key={e.id} event={e} />)}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+
+                {/* Tomorrow — always expanded */}
+                {tomorrowEvts.length > 0 && (
+                  <div>
+                    <div className="px-3 py-1.5 border-t border-[#27272A]">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+                        Tomorrow · {tomorrowEvts.length}
+                      </span>
+                    </div>
+                    {tomorrowEvts.map((e) => <EventRow key={e.id} event={e} />)}
+                  </div>
+                )}
+
+                {/* This week — per-day toggle, collapsed by default */}
+                {thisWeek.map((day) => (
+                  <div key={day.key}>
+                    <button
+                      onClick={() => toggleDay(day.key)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 border-t border-[#27272A] hover:bg-bg-elevated transition-colors"
+                    >
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+                        {day.weekday} · {day.events.length}
+                      </span>
+                      <ChevronRight
+                        className={`h-3 w-3 text-text-muted transition-transform ${expandedDays.has(day.key) ? "rotate-90" : ""}`}
+                      />
+                    </button>
+                    {expandedDays.has(day.key) && day.events.map((e) => <EventRow key={e.id} event={e} />)}
+                  </div>
+                ))}
+
+                {/* Beyond — hidden until clicked */}
+                {hasBeyond && !showBeyond && (
+                  <button
+                    onClick={handleToggleBeyond}
+                    className="w-full text-left px-3 py-2 border-t border-[#27272A] text-[10px] font-mono text-text-muted hover:text-text-secondary transition-colors"
+                  >
+                    show {beyondDayCount} more {beyondDayCount === 1 ? "day" : "days"}
+                  </button>
+                )}
+                {showBeyond && beyond.map((day) => (
+                  <div key={day.key}>
+                    <div className="flex items-center justify-between px-3 py-1.5 border-t border-[#27272A]">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-text-muted">
+                        {day.weekday}
+                        <span className="ml-1.5 normal-case">{day.dateLabel}</span>
+                      </span>
+                    </div>
+                    {day.events.map((e) => <EventRow key={e.id} event={e} />)}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </Section>
 
         {/* Documents */}
-        <Section
-          id="documents"
-          label="Documents"
-          icon={FolderOpen}
-          collapsed={sectionCollapse.documents}
-          onToggle={toggleSection}
-        >
+        <Section id="documents" label="Documents" icon={FolderOpen} collapsed={sectionCollapse.documents} onToggle={toggleSection}>
           <p className="text-xs text-text-muted pt-0.5">
             No documents yet.{" "}
             <span className="text-text-secondary">Upload files and PDFs via chat.</span>
           </p>
         </Section>
+
       </div>
     </div>
   );

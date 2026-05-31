@@ -21,6 +21,7 @@ interface ActivityItem {
   id: string;
   title: string;
   starts_at: string;
+  duration_min: number;
   type: string;
   source: string;
 }
@@ -71,17 +72,17 @@ export async function GET(
     .order("created_at", { ascending: false })
     .limit(8);
 
-  // Fetch recent + upcoming events for this project
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Fetch upcoming events for this project (today onwards, sorted ascending)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
   const { data: activityEvents } = await supabase
     .from("events")
-    .select("id, title, starts_at, type, source")
+    .select("id, title, starts_at, duration_min, type, source")
     .eq("project_id", id)
-    .gte("starts_at", thirtyDaysAgo.toISOString())
-    .order("starts_at", { ascending: false })
-    .limit(8);
+    .gte("starts_at", todayStart.toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(50);
 
   const taskList: Task[] = (tasks ?? []) as Task[];
   const noteList: Note[] = (notes ?? []) as Note[];
