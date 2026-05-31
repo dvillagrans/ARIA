@@ -29,6 +29,10 @@ build/
 .DS_Store
 Thumbs.db
 
+# react-grab skills (auto-generated)
+frontend/.*/
+frontend/skills/
+
 # Supabase
 supabase/.temp/
 supabase/.branches/
