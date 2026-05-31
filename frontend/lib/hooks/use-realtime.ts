@@ -13,6 +13,13 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+// Monotonic suffix so each subscription gets a distinct channel topic.
+// supabase.channel(topic) dedups by topic and returns an existing channel;
+// under StrictMode the async removeChannel() cleanup hasn't evicted the old
+// (already-joined) channel before the remount re-runs, so a stable topic would
+// hand back a joined channel and .on("postgres_changes") would throw.
+let channelSeq = 0;
+
 export interface RealtimeFilter {
   /** Postgres table name to subscribe to (e.g. "tasks", "events"). */
   table: string;
@@ -38,7 +45,7 @@ export function useRealtime<T extends object>(
 
     const supabase = createClient();
     const channels = filters.map((f) => {
-      const channelName = `realtime-${f.table}-${f.filter ?? "all"}`;
+      const channelName = `realtime-${f.table}-${f.filter ?? "all"}-${++channelSeq}`;
       const channel = supabase.channel(channelName);
 
       const pgChanges: {
