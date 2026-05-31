@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import ProjectInfoEditor, {
   type ProjectLink,
 } from "@/components/projects/ProjectInfoEditor";
+import GitHubRepoPanel from "@/components/projects/GitHubRepoPanel";
 
 export default async function ProjectInfoPage({
   params,
@@ -30,6 +31,9 @@ export default async function ProjectInfoPage({
         initialNotes={project.context ?? ""}
         initialGithubRepo={project.github_repo ?? ""}
       />
+      {project.github_repo && (
+        <GitHubRepoPanel repo={project.github_repo} />
+      )}
     </div>
   );
 }
