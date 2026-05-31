@@ -75,6 +75,17 @@ async def _chat_impl(
     """Internal chat implementation (called with or without timing)."""
     now = datetime.now(tz=timezone.utc).isoformat()
 
+    # Fetch user timezone for relative time calculations.
+    user_tz = "UTC"
+    try:
+        user_resp = await db.table("users").select("timezone").eq(
+            "id", str(request.user_id)
+        ).single().execute()
+        if user_resp.data and user_resp.data.get("timezone"):
+            user_tz = user_resp.data["timezone"]
+    except Exception as exc:
+        logger.warning("chat: user timezone fetch failed (using UTC): %s", exc)
+
     # Fetch active projects for this user.
     try:
         projects_resp = await db.table("projects").select("id, name").eq(
@@ -91,6 +102,7 @@ async def _chat_impl(
         projects,
         llm,
         current_datetime=now,
+        timezone=user_tz,
     )
     embed_coro = embedder.embed(request.message)
 

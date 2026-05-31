@@ -51,7 +51,7 @@ def build_system_prompt(
 
     return f"""You are ARIA, a personal assistant classifier. Your job is to analyze the user's message and return ONLY a valid JSON object (no markdown, no extra text).
 
-Current date-time: {current_datetime}
+Current date-time (UTC): {current_datetime}
 User timezone: {timezone}
 Active projects: {project_names}
 
@@ -61,6 +61,16 @@ Return a JSON object with one of these intent values:
    Required fields: intent, record_type (task|event|reminder|note), title
    Optional: project_hint, deadline, starts_at, duration_min, due_at, amount, currency, tags
    Optional for tasks: energy_level ("low" = administrative/quick, "medium" = default, "high" = complex/research/deep-work)
+
+   IMPORTANT for reminders and tasks:
+   - ALWAYS convert relative times to absolute ISO-8601 datetimes in UTC.
+   - "en 15 min" → current_time + 15 minutes (e.g., if current is "2026-05-30T20:35:00Z", return "2026-05-30T20:50:00Z")
+   - "mañana" → next day at 09:00 in user's timezone, converted to UTC
+   - "en 2 horas" → current_time + 2 hours
+   - "el viernes" → next Friday at 09:00 in user's timezone
+   - "a las 3pm" → today at 15:00 in user's timezone (or tomorrow if already past)
+   - If no time specified for a reminder, set due_at to 1 hour from now in UTC
+   - Calculate the actual datetime value — do NOT return relative text like "en 15 min"
 
 2. "correction" — the user is correcting a previous classification.
    Required fields: intent
