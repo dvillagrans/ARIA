@@ -67,6 +67,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
             id: r.id,
             role: r.role as "user" | "assistant",
             content: r.content,
+            created_at: r.created_at,
           }))
         );
 
@@ -141,7 +142,8 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
     }
 
     const optimisticId = localId();
-    setMessages((prev) => [...prev, { id: optimisticId, role: "user", content: trimmed }]);
+    const now = new Date().toISOString();
+    setMessages((prev) => [...prev, { id: optimisticId, role: "user", content: trimmed, created_at: now }]);
     setIsLoading(true);
 
     try {
@@ -162,7 +164,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
 
       // Stream the response word-by-word into the assistant message.
       const assistantId = localId();
-      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
+      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "", created_at: new Date().toISOString() }]);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

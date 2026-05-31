@@ -13,7 +13,7 @@ export interface Reminder {
   is_done: boolean;
   amount?: number;
   currency?: string;
-  [key: string]: unknown;
+  calendar_event_id?: string | null;
 }
 
 interface ReminderListProps {
@@ -225,7 +225,7 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
                     {reminder.title}
                   </p>
                   {reminder.calendar_event_id && (
-                    <Calendar className="h-3 w-3 text-accent shrink-0" title="Synced to Google Calendar" />
+                    <Calendar className="h-3 w-3 text-accent shrink-0" aria-label="Synced to Google Calendar" />
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-0.5">

@@ -25,7 +25,7 @@ export interface RealtimeFilter {
   filter?: string;
 }
 
-export function useRealtime<T extends Record<string, unknown>>(
+export function useRealtime<T extends object>(
   filters: RealtimeFilter[],
   onEvent: (
     table: string,
