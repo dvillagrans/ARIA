@@ -166,11 +166,11 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
   return (
     <div className="px-2">
       <div className="flex items-center justify-between px-2.5 py-1 mb-1">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider">Reminders</span>
+        <span className="text-xs text-text-muted uppercase tracking-wider">Reminders</span>
         <button
           onClick={syncAll}
           disabled={isSyncing}
-          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
           title="Sync all to Google Calendar"
         >
           <CalendarSync className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
@@ -229,7 +229,7 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-[10px] text-text-muted">
+                  <p className="text-xs text-text-muted">
                     {new Date(reminder.due_at).toLocaleString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -239,17 +239,17 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
                     {reminder.amount != null &&
                       ` · ${reminder.currency ?? ""} ${reminder.amount}`}
                   </p>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => startEdit(reminder)}
-                      className="p-0.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-secondary transition-colors"
+                      className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-secondary transition-colors"
                       aria-label="Edit reminder"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => deleteReminder(reminder.id)}
-                      className="p-0.5 rounded hover:bg-red-900/30 text-text-muted hover:text-red-400 transition-colors"
+                      className="p-1.5 rounded hover:bg-bg-elevated text-text-muted hover:text-red-400 transition-colors"
                       aria-label="Delete reminder"
                     >
                       <Trash2 className="h-3 w-3" />

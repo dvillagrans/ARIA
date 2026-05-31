@@ -62,11 +62,12 @@ export default async function AppLayout({
   const projects: Project[] = (projectsResult.data ?? []) as Project[];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg-root">
+    <div className="flex h-dvh overflow-hidden bg-bg-root">
       {/* Sidebar — desktop only */}
       <div className="hidden md:block shrink-0">
         <Sidebar
           userId={user.id}
+          userEmail={user.email ?? ""}
           projects={projects}
           initialEvents={initialEvents}
           initialReminders={initialReminders}
@@ -74,7 +75,7 @@ export default async function AppLayout({
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
+      <div className="flex flex-1 flex-col overflow-hidden pb-nav md:pb-0">
         {children}
       </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { FolderOpen, Plus, X, Check } from "lucide-react";
+import { FolderOpen, Plus, X } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -133,7 +133,7 @@ export default function ProjectList({ projects }: ProjectListProps) {
                     <span className="text-sm truncate">{project.name}</span>
                   </div>
                   {(taskCounts[project.id] ?? 0) > 0 && (
-                    <span className="ml-2 shrink-0 text-[10px] bg-accent/20 text-accent rounded-full px-1.5 py-0.5 font-medium leading-none">
+                    <span className="ml-2 shrink-0 text-xs tabular-nums bg-accent/20 text-accent rounded-full px-1.5 py-0.5 font-medium leading-none">
                       {taskCounts[project.id]}
                     </span>
                   )}
@@ -183,19 +183,19 @@ export default function ProjectList({ projects }: ProjectListProps) {
                 className="w-full rounded-lg border border-bg-elevated bg-bg-root px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 mb-4"
               />
 
-              <p className="text-[10px] uppercase tracking-widest text-text-muted mb-2">Color</p>
+              <p className="text-xs uppercase tracking-widest text-text-muted mb-2">Color</p>
               <div className="flex gap-2 flex-wrap mb-5">
                 {COLORS.map((color) => (
                   <button
                     key={color}
                     onClick={() => setNewColor(color)}
-                    className="w-6 h-6 rounded-full transition-transform hover:scale-110 flex items-center justify-center"
+                    className={`w-9 h-9 rounded-full transition-all ${
+                      newColor === color
+                        ? "ring-2 ring-text-primary ring-offset-2 ring-offset-bg-surface"
+                        : "hover:scale-110"
+                    }`}
                     style={{ backgroundColor: color }}
-                  >
-                    {newColor === color && (
-                      <Check className="h-3 w-3 text-white" strokeWidth={2.5} />
-                    )}
-                  </button>
+                  />
                 ))}
               </div>
 

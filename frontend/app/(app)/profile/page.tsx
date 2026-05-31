@@ -43,7 +43,8 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="mx-auto max-w-md p-4 md:p-6">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 text-text-muted animate-spin" />
@@ -57,7 +58,7 @@ export default function ProfilePage() {
           >
             {/* Avatar */}
             <div className="flex flex-col items-center gap-3 pt-4">
-              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center ring-4 ring-bg-surface">
+              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center border border-border-subtle">
                 <span className="text-xl font-semibold text-accent">
                   {email?.charAt(0).toUpperCase() ?? "?"}
                 </span>
@@ -66,7 +67,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Info card */}
-            <div className="bg-bg-surface/60 rounded-xl border border-bg-elevated p-4">
+            <div className="bg-bg-surface rounded-xl border border-border-subtle p-4">
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-text-muted shrink-0" />
                 <div className="min-w-0">
@@ -81,7 +82,7 @@ export default function ProfilePage() {
               onClick={handleSignOut}
               disabled={signingOut}
               whileTap={{ scale: 0.98 }}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-950/40 border border-red-900/30 px-4 py-2.5 text-sm font-medium text-red-300 hover:bg-red-950/60 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-status-error-bg border border-status-error-border px-4 py-2.5 text-sm font-medium text-status-error-fg hover:opacity-80 transition-opacity disabled:opacity-50"
             >
               {signingOut ? (
                 <>
@@ -97,6 +98,7 @@ export default function ProfilePage() {
             </motion.button>
           </motion.div>
         )}
+        </div>
       </div>
     </main>
   );

@@ -14,12 +14,26 @@
   --color-accent: #8b5cf6;
   --color-accent-hover: #7c3aed;
   --color-accent-muted: rgba(139, 92, 246, 0.15);
-  --color-accent-glow: rgba(139, 92, 246, 0.25);
 
   --color-success: #22c55e;
   --color-warning: #eab308;
   --color-error: #ef4444;
   --color-info: #3b82f6;
+
+  --color-status-warning-bg:     rgba(234, 179,   8, 0.10);
+  --color-status-warning-border: rgba(234, 179,   8, 0.22);
+  --color-status-warning-fg:     #fde68a;
+  --color-status-info-bg:        rgba( 59, 130, 246, 0.10);
+  --color-status-info-border:    rgba( 59, 130, 246, 0.22);
+  --color-status-info-fg:        #bfdbfe;
+  --color-status-error-bg:       rgba(239,  68,  68, 0.10);
+  --color-status-error-border:   rgba(239,  68,  68, 0.22);
+  --color-status-error-fg:       #fecaca;
+
+  --color-border-subtle: #27272a;
+  --color-border-strong: #3f3f46;
+
+  --bottom-nav-height: 3.5rem;
 
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -151,6 +165,29 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: var(--color-bg-hover);
   border-radius: 2px;
+}
+
+.pb-nav {
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-above-nav {
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+}
+
+.focus-ring { outline: none; }
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-bg-root), 0 0 0 4px rgba(139, 92, 246, 0.35);
+  border-radius: inherit;
+}
+
+.banner { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom-width: 1px; font-size: 0.75rem; flex-shrink: 0; }
+.banner-warning { background: var(--color-status-warning-bg); border-color: var(--color-status-warning-border); color: var(--color-status-warning-fg); }
+.banner-info    { background: var(--color-status-info-bg);    border-color: var(--color-status-info-border);    color: var(--color-status-info-fg); }
+.banner-error   { background: var(--color-status-error-bg);   border-color: var(--color-status-error-border);   color: var(--color-status-error-fg); }
+
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px; }
 }
 
 input:-webkit-autofill,

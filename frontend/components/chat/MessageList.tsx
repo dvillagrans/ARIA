@@ -42,14 +42,14 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
         <EmptyState
           icon={MessageSquare}
           title="No messages yet"
-          description="Say something to ARIA. Your AI assistant is ready to help."
+          description="Type a message below to begin."
         />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto p-3 scrollbar-thin">
+    <div className="flex flex-1 flex-col overflow-y-auto p-4 md:px-6 scrollbar-thin">
       {/* Initial loading skeleton — outside AnimatePresence to avoid key collision */}
       {isLoading && messages.length === 0 && (
         <div className="flex flex-1 flex-col gap-3">
@@ -68,7 +68,6 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
       <AnimatePresence initial={false}>
         {messages.map((msg, i) => {
           const isUser = msg.role === "user";
-          const isLastAssistant = !isUser && (i === messages.length - 1 || messages[i + 1]?.role !== "assistant");
           const showTime = i === 0 || messages[i - 1]?.role !== msg.role || i === messages.length - 1;
 
           return (
@@ -78,30 +77,18 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
               {...messageAnimation}
               className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
-              <div className={`max-w-[85%] md:max-w-[70%] ${isUser ? "order-1" : ""}`}>
+              <div className={`max-w-[85%] sm:max-w-[80%] md:max-w-[70%] ${isUser ? "order-1" : ""}`}>
                 <div
                   className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                     isUser
-                      ? "bg-accent text-white rounded-br-md shadow-sm shadow-accent/20 ml-8"
-                      : "bg-bg-elevated border border-bg-hover/50 text-text-primary rounded-bl-md mr-8"
+                      ? "bg-accent text-white rounded-2xl"
+                      : "bg-bg-surface border border-border-subtle text-text-primary rounded-2xl"
                   }`}
                 >
                   {msg.content}
-                  {isLastAssistant && (
-                    <div
-                      className="absolute -bottom-0.5 right-0 translate-y-full"
-                      style={{
-                        width: 0,
-                        height: 0,
-                        borderLeft: "6px solid transparent",
-                        borderRight: "6px solid transparent",
-                        borderTop: `6px solid var(--color-bg-elevated)`,
-                      }}
-                    />
-                  )}
                 </div>
                 {showTime && (
-                  <p className={`text-[10px] text-text-muted mt-1 ${isUser ? "text-right" : "text-left"}`}>
+                  <p className={`text-xs px-1 text-text-muted mt-1 ${isUser ? "text-right" : "text-left"}`}>
                     {formatTime(msg.created_at ? new Date(msg.created_at) : new Date())}
                   </p>
                 )}
@@ -118,7 +105,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-start"
           >
-            <div className="bg-bg-elevated border border-bg-hover/50 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1.5 mr-8">
+            <div className="bg-bg-surface border border-border-subtle rounded-2xl px-4 py-3 flex items-center gap-1.5">
               <span className="typing-dot" />
               <span className="typing-dot" />
               <span className="typing-dot" />

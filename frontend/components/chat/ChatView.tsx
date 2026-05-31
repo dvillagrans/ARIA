@@ -213,12 +213,11 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
             {isProjectChat ? projectName : "ARIA"}
           </h1>
           {isProjectChat ? (
-            <p className="text-[10px] text-text-muted">Project chat</p>
+            <p className="text-xs text-text-muted">Project chat</p>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <span className="block w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot" />
-              <span className="text-[10px] text-text-muted">Online</span>
-            </div>
+            !isOnline && (
+              <p className="text-xs" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
+            )
           )}
         </div>
       </header>
@@ -229,7 +228,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           role="status"
-          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-950/60 border-b border-amber-900/30 text-amber-200 text-xs"
+          className="banner banner-warning"
         >
           <WifiOff className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1">
@@ -245,7 +244,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
           animate={{ opacity: 1, height: "auto" }}
           role="status"
           aria-live="polite"
-          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-950/40 border-b border-blue-900/30 text-blue-200 text-xs"
+          className="banner banner-info"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
           <span>Syncing {pendingCount} messages…</span>
@@ -265,12 +264,12 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
         <motion.div
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-950/60 border-t border-red-900/30 text-red-200 text-xs"
+          className="banner banner-error border-t"
         >
           <span className="flex-1">{chatError}</span>
           <button
             onClick={() => setChatError(null)}
-            className="shrink-0 p-0.5 rounded hover:bg-red-900/40 transition-colors"
+            className="shrink-0 p-1.5 rounded hover:bg-status-error-bg transition-colors"
             aria-label="Dismiss error"
           >
             <X className="h-3.5 w-3.5" />

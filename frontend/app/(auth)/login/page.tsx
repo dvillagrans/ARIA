@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,52 +34,77 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4 bg-gradient-to-b from-bg-root via-bg-root to-bg-surface">
-      <div className="w-full max-w-sm animate-fade-in-up">
-        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-elevated rounded-2xl shadow-md p-6 space-y-6">
-          {/* Logo + Title */}
-          <div className="space-y-3 text-center">
-            <div className="mx-auto w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-accent" strokeWidth={1.5} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">ARIA</h1>
-              <p className="text-sm text-text-muted mt-1">Sign in to continue</p>
-            </div>
+    <main className="flex min-h-dvh flex-col bg-bg-root">
+      {/* Top strip */}
+      <div className="flex items-center gap-2.5 px-6 pt-8">
+        <img src="/logo.svg" alt="ARIA" className="w-8 h-8 rounded-xl" />
+        <span className="text-sm font-semibold tracking-tight">ARIA</span>
+      </div>
+
+      {/* Centered form */}
+      <div className="flex flex-1 items-center justify-center px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full max-w-sm"
+        >
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+            <p className="text-sm text-text-muted mt-1">Sign in to your account to continue.</p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-xs font-medium text-text-secondary">
+                Email
+              </label>
               <input
                 id="email"
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="Email"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
-                className="w-full rounded-xl bg-bg-elevated border border-bg-hover px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:opacity-50 transition-all"
+                className="w-full h-11 rounded-xl bg-bg-elevated border border-border-subtle px-4 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50 transition-colors"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="block text-xs font-medium text-text-secondary">
+                Password
+              </label>
               <input
                 id="password"
                 type="password"
                 required
                 autoComplete="current-password"
-                placeholder="Password"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                className="w-full rounded-xl bg-bg-elevated border border-bg-hover px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 disabled:opacity-50 transition-all"
+                className="w-full h-11 rounded-xl bg-bg-elevated border border-border-subtle px-4 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent disabled:opacity-50 transition-colors"
               />
             </div>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                role="alert"
+                className="banner banner-error rounded-xl"
+              >
+                {error}
+              </motion.div>
+            )}
 
             <motion.button
               type="submit"
               disabled={loading || !email || !password}
               whileTap={{ scale: 0.98 }}
-              className="w-full rounded-xl bg-gradient-to-r from-accent to-accent-hover px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-accent/20 transition-shadow hover:shadow-lg hover:shadow-accent/30"
+              className="w-full h-11 rounded-xl bg-accent px-4 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-hover transition-colors"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -91,19 +116,7 @@ export default function LoginPage() {
               )}
             </motion.button>
           </form>
-
-          {/* Error */}
-          {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              role="alert"
-              className="text-center text-sm text-red-400"
-            >
-              {error}
-            </motion.p>
-          )}
-        </div>
+        </motion.div>
       </div>
     </main>
   );

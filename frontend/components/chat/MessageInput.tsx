@@ -41,8 +41,8 @@ export default function MessageInput({
   }
 
   return (
-    <div className="border-t border-bg-elevated bg-bg-surface/90 backdrop-blur-sm px-3 py-2.5 md:px-4 md:py-3">
-      <div className="flex items-end gap-2 bg-bg-elevated rounded-2xl border border-bg-hover focus-within:border-accent/40 focus-within:shadow-[0_0_0_2px_var(--color-accent-muted)] transition-all px-3 py-1.5">
+    <div className="border-t border-bg-elevated bg-bg-surface/90 backdrop-blur-sm px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:px-4 md:pt-3 md:pb-3">
+      <div className="flex items-end gap-2 bg-bg-elevated rounded-2xl border border-border-subtle focus-within:border-accent transition-all px-3 py-1.5">
         <textarea
           ref={textareaRef}
           className="flex-1 resize-none bg-transparent text-text-primary placeholder-text-muted text-sm py-1.5 focus:outline-none max-h-32"
@@ -59,8 +59,7 @@ export default function MessageInput({
           onClick={onSubmit}
           disabled={disabled || !value.trim()}
           whileTap={{ scale: 0.92 }}
-          whileHover={{ scale: 1.05 }}
-          className="shrink-0 rounded-full bg-accent hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 transition-colors"
+          className="shrink-0 rounded-full bg-accent hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed text-white w-9 h-9 flex items-center justify-center transition-colors"
           aria-label="Send message"
         >
           <Send className="h-4 w-4" />

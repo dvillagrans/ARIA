@@ -199,13 +199,13 @@ export default function EventList({
   return (
     <div className="px-2">
       <div className="flex items-center justify-between px-2.5 py-1 mb-1">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider">
+        <span className="text-xs text-text-muted uppercase tracking-wider">
           Events
         </span>
         <button
           onClick={syncFromGoogle}
           disabled={isSyncing}
-          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
           title="Import from Google Calendar"
         >
           <CalendarSync
@@ -235,10 +235,10 @@ export default function EventList({
             return (
               <div key={group.date}>
                 <div className="flex items-center justify-between px-2.5 mb-1">
-                  <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
+                  <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
                     {group.label}
                   </p>
-                  <span className="text-[10px] text-text-muted/50">
+                  <span className="text-xs text-text-muted/50">
                     {group.events.length}
                   </span>
                 </div>
@@ -260,16 +260,14 @@ export default function EventList({
                           {event.title}
                         </p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <Clock className="h-2.5 w-2.5 text-text-muted" />
-                          <p className="text-[10px] text-text-muted">
+                          <Clock className="h-3 w-3 text-text-muted" />
+                          <p className="text-xs text-text-muted">
                             {formatTime(event.starts_at)}
                             {event.duration_min > 0 &&
                               ` · ${formatDuration(event.duration_min)}`}
                           </p>
                           {event.source === "google_calendar" && (
-                            <span className="text-[10px] text-accent/60">
-                              📅
-                            </span>
+                            <span className="inline-block w-1 h-1 rounded-full bg-accent/60" aria-label="Google Calendar" />
                           )}
                         </div>
                       </div>
@@ -289,7 +287,7 @@ export default function EventList({
                         return next;
                       })
                     }
-                    className="w-full text-center py-1 text-[10px] text-text-muted hover:text-accent transition-colors"
+                    className="w-full text-center py-1 text-xs text-text-muted hover:text-accent transition-colors"
                   >
                     {isExpanded
                       ? "Show less"
