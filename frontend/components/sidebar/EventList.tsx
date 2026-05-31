@@ -127,6 +127,7 @@ export default function EventList({
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
   useRealtime<CalendarEvent>(
     [{ table: "events", filter: `user_id=eq.${userId}` }],
@@ -224,46 +225,80 @@ export default function EventList({
         />
       ) : (
         <div className="space-y-3">
-          {groups.map((group) => (
-            <div key={group.date}>
-              <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider px-2.5 mb-1">
-                {group.label}
-              </p>
-              <ul className="space-y-0.5">
-                {group.events.map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex items-start gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group"
-                  >
-                    <div
-                      className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 border ${getEventColor(
-                        event.type
-                      )}`}
+          {groups.map((group) => {
+            const isExpanded = expandedDays.has(group.date);
+            const visibleEvents = isExpanded
+              ? group.events
+              : group.events.slice(0, 3);
+            const hasMore = group.events.length > 3;
+
+            return (
+              <div key={group.date}>
+                <div className="flex items-center justify-between px-2.5 mb-1">
+                  <p className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
+                    {group.label}
+                  </p>
+                  <span className="text-[10px] text-text-muted/50">
+                    {group.events.length}
+                  </span>
+                </div>
+                <ul className="space-y-0.5">
+                  {visibleEvents.map((event) => (
+                    <li
+                      key={event.id}
+                      className="flex items-start gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group"
                     >
-                      {getEventIcon(event.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
-                        {event.title}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Clock className="h-2.5 w-2.5 text-text-muted" />
-                        <p className="text-[10px] text-text-muted">
-                          {formatTime(event.starts_at)}
-                          {event.duration_min > 0 &&
-                            ` · ${formatDuration(event.duration_min)}`}
-                        </p>
-                        {event.source === "google_calendar" && (
-                          <span className="text-[10px] text-accent/60">
-                            📅
-                          </span>
-                        )}
+                      <div
+                        className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 border ${getEventColor(
+                          event.type
+                        )}`}
+                      >
+                        {getEventIcon(event.type)}
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
+                          {event.title}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Clock className="h-2.5 w-2.5 text-text-muted" />
+                          <p className="text-[10px] text-text-muted">
+                            {formatTime(event.starts_at)}
+                            {event.duration_min > 0 &&
+                              ` · ${formatDuration(event.duration_min)}`}
+                          </p>
+                          {event.source === "google_calendar" && (
+                            <span className="text-[10px] text-accent/60">
+                              📅
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {hasMore && (
+                  <button
+                    onClick={() =>
+                      setExpandedDays((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group.date)) {
+                          next.delete(group.date);
+                        } else {
+                          next.add(group.date);
+                        }
+                        return next;
+                      })
+                    }
+                    className="w-full text-center py-1 text-[10px] text-text-muted hover:text-accent transition-colors"
+                  >
+                    {isExpanded
+                      ? "Show less"
+                      : `+${group.events.length - 3} more`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
           ))}
         </div>
       )}
