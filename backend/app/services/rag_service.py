@@ -100,6 +100,7 @@ async def answer(
     llm: LLMProvider,
     embedder: EmbeddingProvider,
     settings,
+    history: list[dict] | None = None,
 ) -> tuple[str, list[Passage]]:
     """
     Full RAG pipeline: retrieve → fetch history → reason → return.
@@ -123,10 +124,10 @@ async def answer(
         Tuple of (answer string, list of Passage objects used as context).
     """
     if aria_rag_latency_seconds is None:
-        return await _answer_impl(user_id, question, db, llm, embedder, settings)
+        return await _answer_impl(user_id, question, db, llm, embedder, settings, history)
 
     with aria_rag_latency_seconds.labels(model="deepseek-reasoner").time():
-        return await _answer_impl(user_id, question, db, llm, embedder, settings)
+        return await _answer_impl(user_id, question, db, llm, embedder, settings, history)
 
 
 async def _answer_impl(
@@ -136,6 +137,7 @@ async def _answer_impl(
     llm: LLMProvider,
     embedder: EmbeddingProvider,
     settings,
+    history: list[dict] | None = None,
 ) -> tuple[str, list[Passage]]:
     """Internal RAG implementation (called with or without timing)."""
     passages = await retrieve(
@@ -147,7 +149,10 @@ async def _answer_impl(
         settings.RAG_MATCH_COUNT,
     )
 
-    history = await conversation_service.get_history(user_id, db, limit=20)
+    effective_history = (
+        history if history is not None
+        else await conversation_service.get_history(user_id, db, limit=10)
+    )
 
     context_texts: list[str] = []
     for p in passages:
@@ -156,7 +161,7 @@ async def _answer_impl(
             label += f" ({p.project_name})"
         context_texts.append(f"{label}: {p.content}")
 
-    answer_text = await llm.reason(question, context=context_texts, history=history)
+    answer_text = await llm.reason(question, context=context_texts, history=effective_history)
 
     logger.info(
         "rag_service.answer: user=%s passages=%d answer_len=%d",

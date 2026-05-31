@@ -112,6 +112,15 @@ async def _chat_impl(
         logger.error("chat: projects fetch failed: %s", exc)
         raise HTTPException(status_code=500, detail="Database unavailable")
 
+    # Fetch recent conversation history (project-scoped or general).
+    try:
+        history = await conversation_service.get_history(
+            request.user_id, db, limit=10, project_id=request.project_id
+        )
+    except Exception as exc:
+        logger.warning("chat: history fetch failed (using empty): %s", exc)
+        history = []
+
     # Parallel classify + embed.
     classify_coro = classifier_service.classify(
         request.message,
@@ -314,7 +323,7 @@ async def _chat_impl(
     elif isinstance(intent_obj, QueryIntent):
         try:
             answer_text, passages = await rag_service.answer(
-                request.user_id, request.message, db, llm, embedder, settings
+                request.user_id, request.message, db, llm, embedder, settings, history
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat: rag_service.answer() failed: %s", exc)
@@ -409,7 +418,8 @@ async def _chat_impl(
         try:
             reply_text = await llm.reason(
                 "The user sent a casual message. Respond briefly and naturally "
-                f"in the same language. User message: {request.message}"
+                f"in the same language. User message: {request.message}",
+                history=history,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat: conversation reason() failed: %s", exc)

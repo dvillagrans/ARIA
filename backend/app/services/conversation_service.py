@@ -40,6 +40,7 @@ async def get_history(
     user_id: UUID,
     db,
     limit: int = 20,
+    project_id: UUID | None = None,
 ) -> list[ConversationTurn]:
     """
     Fetch recent conversation turns for a user, ordered by created_at ascending.
@@ -48,18 +49,24 @@ async def get_history(
         user_id: The user's UUID.
         db: Supabase AsyncClient.
         limit: Maximum number of turns to return (default 20).
+        project_id: If provided, return only turns for that project.
+                    If None, return only general-chat turns (project_id IS NULL).
 
     Returns:
-        List of conversation turn dicts, oldest first.
+        List of conversation turn dicts with role + content, oldest first.
     """
-    response = (
-        await db.table("conversations")
-        .select("*")
+    query = (
+        db.table("conversations")
+        .select("role, content")
         .eq("user_id", str(user_id))
         .order("created_at", desc=False)
         .limit(limit)
-        .execute()
     )
+    if project_id is not None:
+        query = query.eq("project_id", str(project_id))
+    else:
+        query = query.is_("project_id", "null")
+    response = await query.execute()
     return response.data or []
 
 
