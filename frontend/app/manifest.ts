@@ -7,8 +7,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Your personal AI assistant",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0a0a",
-    theme_color: "#0a0a0a",
+    display_override: ["standalone", "minimal-ui"],
+    orientation: "portrait",
+    background_color: "#09090b",
+    theme_color: "#09090b",
+    categories: ["productivity", "utilities"],
     icons: [
       {
         src: "/icons/icon-192.png",

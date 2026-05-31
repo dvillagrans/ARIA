@@ -1,17 +1,9 @@
 "use client";
 
-/**
- * ProjectList — lists active projects with task count badges.
- *
- * Subscribes to a per-project Realtime channel for tasks (INSERT/UPDATE/DELETE).
- * Tasks from a different project do not affect this list.
- *
- * Spec §7: per-project Realtime channel for tasks.
- * ADR-06.
- */
-
 import { useEffect, useState } from "react";
+import { FolderOpen } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
+import EmptyState from "@/components/ui/EmptyState";
 
 export interface Project {
   id: string;
@@ -24,6 +16,7 @@ interface Task {
   project_id: string;
   title: string;
   status: string;
+  [key: string]: unknown;
 }
 
 interface ProjectListProps {
@@ -33,7 +26,6 @@ interface ProjectListProps {
 export default function ProjectList({ projects }: ProjectListProps) {
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
 
-  // Build one Realtime filter per project for tasks.
   const filters = projects.map((p) => ({
     table: "tasks",
     filter: `project_id=eq.${p.id}`,
@@ -41,11 +33,9 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
   useRealtime<Task>(filters, (table, eventType, row) => {
     if (table !== "tasks") return;
-
     setTaskCounts((prev) => {
       const projectId = row.project_id;
       const current = prev[projectId] ?? 0;
-
       if (eventType === "INSERT") {
         return { ...prev, [projectId]: current + 1 };
       }
@@ -58,26 +48,30 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
   if (projects.length === 0) {
     return (
-      <p className="text-xs text-gray-500 px-3 py-2">No projects yet.</p>
+      <EmptyState
+        icon={FolderOpen}
+        title="No projects yet"
+        description="Create projects to organize your tasks."
+      />
     );
   }
 
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-0.5 px-2">
       {projects.map((project) => (
         <li key={project.id}>
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors">
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated cursor-pointer transition-colors group">
             <div className="flex items-center gap-2 min-w-0">
               <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
+                className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: project.color }}
               />
-              <span className="text-sm text-gray-200 truncate">
+              <span className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
                 {project.name}
               </span>
             </div>
             {(taskCounts[project.id] ?? 0) > 0 && (
-              <span className="ml-2 shrink-0 text-xs bg-indigo-600 text-white rounded-full px-1.5 py-0.5 leading-none">
+              <span className="ml-2 shrink-0 text-[10px] bg-accent/20 text-accent rounded-full px-1.5 py-0.5 font-medium leading-none">
                 {taskCounts[project.id]}
               </span>
             )}

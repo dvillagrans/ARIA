@@ -19,3 +19,6 @@
 
 # frontend
 - Wrap `fastapiResponse.json()` in try/catch in Next.js API routes to handle non-JSON error responses gracefully. Confidence: 0.65
+
+# pnpm
+- Use pnpm as the package manager (not npm). Confidence: 0.65

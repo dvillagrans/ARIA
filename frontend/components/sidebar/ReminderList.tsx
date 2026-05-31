@@ -1,16 +1,9 @@
 "use client";
 
-/**
- * ReminderList — pending reminders with Realtime updates.
- *
- * Subscribes to a per-user reminders channel. Updates list on INSERT/UPDATE/DELETE.
- *
- * Spec §7: per-user Realtime channel for reminders.
- * ADR-06.
- */
-
 import { useState } from "react";
+import { Bell } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
+import EmptyState from "@/components/ui/EmptyState";
 
 export interface Reminder {
   id: string;
@@ -19,6 +12,7 @@ export interface Reminder {
   is_done: boolean;
   amount?: number;
   currency?: string;
+  [key: string]: unknown;
 }
 
 interface ReminderListProps {
@@ -26,10 +20,7 @@ interface ReminderListProps {
   initialReminders?: Reminder[];
 }
 
-export default function ReminderList({
-  userId,
-  initialReminders = [],
-}: ReminderListProps) {
+export default function ReminderList({ userId, initialReminders = [] }: ReminderListProps) {
   const [reminders, setReminders] = useState<Reminder[]>(
     initialReminders.filter((r) => !r.is_done)
   );
@@ -46,7 +37,6 @@ export default function ReminderList({
           );
         }
         if (eventType === "UPDATE") {
-          // Remove if marked done, otherwise update in place.
           if (row.is_done) return prev.filter((r) => r.id !== row.id);
           return prev.map((r) => (r.id === row.id ? row : r));
         }
@@ -60,19 +50,25 @@ export default function ReminderList({
 
   if (reminders.length === 0) {
     return (
-      <p className="text-xs text-gray-500 px-3 py-2">No pending reminders.</p>
+      <EmptyState
+        icon={Bell}
+        title="No pending reminders"
+        description="Reminders you create will show up here."
+      />
     );
   }
 
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-0.5 px-2">
       {reminders.map((reminder) => (
         <li
           key={reminder.id}
-          className="px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+          className="px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group"
         >
-          <p className="text-sm text-gray-200 truncate">{reminder.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
+            {reminder.title}
+          </p>
+          <p className="text-[10px] text-text-muted mt-0.5">
             {new Date(reminder.due_at).toLocaleString(undefined, {
               month: "short",
               day: "numeric",

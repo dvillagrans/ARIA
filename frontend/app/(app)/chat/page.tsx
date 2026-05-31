@@ -1,38 +1,14 @@
 "use client";
 
-/**
- * Chat page — Phase 6 update.
- *
- * Phase 1 behavior preserved:
- * - Fetches conversation history from Supabase on mount.
- * - Appends user message optimistically on submit.
- * - POSTs to /api/chat (Next.js route handler) which injects user_id server-side.
- * - Rolls back optimistic message on API error (online path only).
- *
- * Phase 3 additions:
- * - Message type extended with optional metadata field.
- * - After loadHistory() resolves, checks for today's briefing deduplication.
- * - If no briefing found in history for today, fetches GET /api/briefing.
- * - Injects briefing as first message with stale indicator when stale=true.
- *
- * Phase 6 additions:
- * - Integrates useOfflineQueue hook for offline detection and drain.
- * - When offline, enqueues message to IDB instead of fetching.
- * - Shows offline banner with pending count when !isOnline.
- * - Shows syncing indicator during drain.
- * - Drain callbacks replace queued messages with real responses.
- *
- * Spec §4 — chat/page.tsx UI contract.
- */
-
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Bot, WifiOff, Loader2, ChevronLeft, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
 import type { Message as BaseMessage } from "@/components/chat/MessageList";
 import { useOfflineQueue } from "@/lib/hooks/use-offline-queue";
 
-// Extend base Message with the queued flag used for offline optimistic display.
 interface Message extends BaseMessage {
   queued?: boolean;
 }
@@ -54,21 +30,16 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const optimisticIdRef = useRef<string | null>(null);
 
   const { isOnline, isSyncing, pendingCount, enqueueMessage, drainQueue } =
     useOfflineQueue();
 
-  // Wire drain callbacks: replace queued message with real data on success,
-  // keep it as-is on failure (no rollback per spec §4).
   const handleMessageSent = useCallback(
-    (
-      localId: string,
-      responseData: { confirmation_text: string }
-    ) => {
+    (localId: string, responseData: { confirmation_text: string }) => {
       setMessages((prev) => {
-        // Replace queued user message with a real assistant reply appended.
         const withoutQueued = prev.map((m) =>
           m.id === localId ? { ...m, queued: false } : m
         );
@@ -83,13 +54,8 @@ export default function ChatPage() {
     []
   );
 
-  const handleMessageFailed = useCallback((_localId: string) => {
-    // Keep queued message as-is — no rollback on drain failure.
-  }, []);
+  const handleMessageFailed = useCallback((_localId: string) => {}, []);
 
-  // Trigger drain with bound callbacks when the hook fires the online event.
-  // We do this by watching isOnline transitions — when it becomes true and
-  // pendingCount > 0, drain immediately with the proper callbacks.
   const pendingCountRef = useRef(pendingCount);
   useEffect(() => {
     pendingCountRef.current = pendingCount;
@@ -102,7 +68,6 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
-  // Load conversation history on mount, then inject today's briefing if needed.
   useEffect(() => {
     async function loadHistoryAndBriefing() {
       const supabase = createClient();
@@ -121,6 +86,7 @@ export default function ChatPage() {
 
       if (fetchError) {
         console.error("[chat] failed to load history:", fetchError);
+        setIsHistoryLoading(false);
         return;
       }
 
@@ -133,21 +99,19 @@ export default function ChatPage() {
           }))
         : [];
 
-      // Deduplicate briefing: skip fetch if today's briefing is already in history.
       const today = new Date().toISOString().split("T")[0];
       const firstMsg = history[0];
       const hasTodayBriefing =
         firstMsg?.role === "assistant" &&
-        (firstMsg?.metadata as BriefingMetadata | undefined)?.intent ===
-          "briefing" &&
+        (firstMsg?.metadata as BriefingMetadata | undefined)?.intent === "briefing" &&
         (firstMsg?.metadata as BriefingMetadata | undefined)?.date === today;
 
       if (hasTodayBriefing) {
         setMessages(history);
+        setIsHistoryLoading(false);
         return;
       }
 
-      // Fetch today's briefing and prepend as first message.
       try {
         const res = await fetch("/api/briefing");
         if (res.ok) {
@@ -167,14 +131,15 @@ export default function ChatPage() {
             },
           };
           setMessages([briefingMsg, ...history]);
+          setIsHistoryLoading(false);
           return;
         }
       } catch (err) {
         console.error("[chat] briefing fetch error:", err);
       }
 
-      // Briefing fetch failed — show history without briefing.
       setMessages(history);
+      setIsHistoryLoading(false);
     }
 
     loadHistoryAndBriefing();
@@ -188,7 +153,6 @@ export default function ChatPage() {
     setError(null);
     setIsLoading(true);
 
-    // Optimistic append.
     const optimisticId = nextId();
     optimisticIdRef.current = optimisticId;
     const optimisticMsg: Message = {
@@ -198,7 +162,6 @@ export default function ChatPage() {
     };
     setMessages((prev) => [...prev, optimisticMsg]);
 
-    // Offline path: enqueue and mark as queued. Do NOT roll back.
     if (!isOnline) {
       const localId = await enqueueMessage(trimmed);
       setMessages((prev) =>
@@ -221,9 +184,9 @@ export default function ChatPage() {
       });
 
       if (!res.ok) {
-        // Roll back optimistic message on error (online path only).
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         setError("Something went wrong. Please try again.");
+        setIsLoading(false);
         return;
       }
 
@@ -235,10 +198,7 @@ export default function ChatPage() {
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
-      // Online but fetch failed — existing rollback behavior.
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== optimisticId)
-      );
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       setError("Network error. Please check your connection.");
       console.error("[chat] fetch error:", err);
     } finally {
@@ -248,47 +208,74 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="flex flex-col h-screen bg-gray-900 text-gray-100">
+    <main className="flex flex-col h-full bg-bg-root text-text-primary">
       {/* Header */}
-      <header className="shrink-0 flex items-center px-4 py-3 border-b border-gray-700">
-        <h1 className="text-lg font-semibold">ARIA</h1>
+      <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
+        <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+          <Bot className="h-4 w-4 text-accent" strokeWidth={1.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-sm font-semibold">ARIA</h1>
+          <div className="flex items-center gap-1.5">
+            <span className="block w-1.5 h-1.5 rounded-full bg-success animate-pulse-dot" />
+            <span className="text-[10px] text-text-muted">Online</span>
+          </div>
+        </div>
       </header>
 
-      {/* Offline banner — shown when !isOnline; spec §4 offline banner */}
+      {/* Offline banner */}
       {!isOnline && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
           role="status"
-          className="shrink-0 px-4 py-2 bg-yellow-900/60 text-yellow-200 text-sm text-center"
+          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-950/60 border-b border-amber-900/30 text-amber-200 text-xs"
         >
-          You are offline. Messages will be sent when you reconnect.
-          {pendingCount > 0 && ` (${pendingCount} queued)`}
-        </div>
+          <WifiOff className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">
+            Offline{pendingCount > 0 && ` — ${pendingCount} queued`}
+          </span>
+        </motion.div>
       )}
 
-      {/* Syncing indicator — shown during drain; spec §4 syncing indicator */}
+      {/* Syncing banner */}
       {isSyncing && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
           role="status"
           aria-live="polite"
-          className="shrink-0 px-4 py-2 bg-blue-900/40 text-blue-200 text-sm text-center"
+          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-950/40 border-b border-blue-900/30 text-blue-200 text-xs"
         >
-          Syncing {pendingCount} messages...
-        </div>
+          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          <span>Syncing {pendingCount} messages…</span>
+        </motion.div>
       )}
 
-      {/* Message list — fills remaining height */}
+      {/* Message list */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <MessageList messages={messages} />
+        <MessageList messages={messages} isLoading={isHistoryLoading || (isLoading && messages.length > 0)} />
       </div>
 
       {/* Error banner */}
       {error && (
-        <div className="shrink-0 px-4 py-2 bg-red-900/60 text-red-200 text-sm text-center">
-          {error}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-950/60 border-t border-red-900/30 text-red-200 text-xs"
+        >
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="shrink-0 p-0.5 rounded hover:bg-red-900/40 transition-colors"
+            aria-label="Dismiss error"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </motion.div>
       )}
 
-      {/* Input pinned to bottom */}
+      {/* Input */}
       <div className="shrink-0">
         <MessageInput
           value={input}

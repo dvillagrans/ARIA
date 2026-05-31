@@ -1,25 +1,16 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/sidebar/Sidebar";
+import BottomNav from "@/components/navigation/BottomNav";
 import type { CalendarEvent } from "@/components/sidebar/EventList";
 import type { Reminder } from "@/components/sidebar/ReminderList";
 import type { Project } from "@/components/sidebar/ProjectList";
 
 /**
- * Protected route group layout — Phase 3 update.
+ * Protected route group layout — responsive mobile-first.
  *
- * Phase 1 behavior preserved:
- * - Runs server-side before any child page renders.
- * - If no authenticated session exists, redirects to /login.
- *
- * Phase 3 additions:
- * - Fetches initialEvents (next 7 days) and initialReminders (pending)
- *   concurrently via SSR before rendering.
- * - Passes both as props to Sidebar for zero-flash first paint.
- * - Fetches active projects for Sidebar.
- * - Query failures return empty arrays — layout never breaks.
- *
- * Spec §sidebar-ssr: AppLayout SSR Data Fetch.
+ * Mobile (default): full-width content + BottomNav.
+ * Desktop (md+): fixed sidebar (w-64) + content + no BottomNav.
  */
 export default async function AppLayout({
   children,
@@ -35,14 +26,12 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // Compute date range for events (today to +7 days).
   const today = new Date();
   const sevenDaysFromNow = new Date(today);
   sevenDaysFromNow.setDate(today.getDate() + 7);
   const todayIso = today.toISOString();
   const sevenDaysIso = sevenDaysFromNow.toISOString();
 
-  // Run three concurrent SSR queries.
   const [eventsResult, remindersResult, projectsResult] = await Promise.all([
     supabase
       .from("events")
@@ -67,21 +56,30 @@ export default async function AppLayout({
       .order("name", { ascending: true }),
   ]);
 
-  // Graceful fallback to empty arrays on query failure.
   const initialEvents: CalendarEvent[] = (eventsResult.data ?? []) as CalendarEvent[];
   const initialReminders: Reminder[] = (remindersResult.data ?? []) as Reminder[];
   const projects: Project[] = (projectsResult.data ?? []) as Project[];
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        userId={user.id}
-        projects={projects}
-        initialEvents={initialEvents}
-        initialReminders={initialReminders}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-bg-root">
+      {/* Sidebar — desktop only */}
+      <div className="hidden md:block shrink-0">
+        <Sidebar
+          userId={user.id}
+          projects={projects}
+          initialEvents={initialEvents}
+          initialReminders={initialReminders}
+        />
+      </div>
+
+      {/* Main content area */}
+      <div className="flex flex-1 flex-col overflow-hidden pb-14 md:pb-0">
         {children}
+      </div>
+
+      {/* Bottom nav — mobile only */}
+      <div className="md:hidden">
+        <BottomNav />
       </div>
     </div>
   );

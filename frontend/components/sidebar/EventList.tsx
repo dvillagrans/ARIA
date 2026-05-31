@@ -1,16 +1,9 @@
 "use client";
 
-/**
- * EventList — upcoming events with Realtime updates.
- *
- * Subscribes to a per-user events channel. Updates list on INSERT/UPDATE/DELETE.
- *
- * Spec §7: per-user Realtime channel for events.
- * ADR-06.
- */
-
 import { useState } from "react";
+import { CalendarDays } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
+import EmptyState from "@/components/ui/EmptyState";
 
 export interface CalendarEvent {
   id: string;
@@ -18,6 +11,7 @@ export interface CalendarEvent {
   starts_at: string;
   duration_min: number;
   type: string;
+  [key: string]: unknown;
 }
 
 interface EventListProps {
@@ -25,10 +19,7 @@ interface EventListProps {
   initialEvents?: CalendarEvent[];
 }
 
-export default function EventList({
-  userId,
-  initialEvents = [],
-}: EventListProps) {
+export default function EventList({ userId, initialEvents = [] }: EventListProps) {
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
 
   useRealtime<CalendarEvent>(
@@ -54,19 +45,25 @@ export default function EventList({
 
   if (events.length === 0) {
     return (
-      <p className="text-xs text-gray-500 px-3 py-2">No upcoming events.</p>
+      <EmptyState
+        icon={CalendarDays}
+        title="No upcoming events"
+        description="Your next 7 days of events will appear here."
+      />
     );
   }
 
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-0.5 px-2">
       {events.map((event) => (
         <li
           key={event.id}
-          className="px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+          className="px-2.5 py-1.5 rounded-lg hover:bg-bg-elevated transition-colors group"
         >
-          <p className="text-sm text-gray-200 truncate">{event.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
+            {event.title}
+          </p>
+          <p className="text-[10px] text-text-muted mt-0.5">
             {new Date(event.starts_at).toLocaleString(undefined, {
               month: "short",
               day: "numeric",

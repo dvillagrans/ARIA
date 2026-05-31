@@ -1,12 +1,7 @@
 "use client";
 
-/**
- * Sidebar — composes ProjectList, EventList, and ReminderList.
- *
- * All three lists update in real-time via Supabase Realtime channels.
- * Spec §7: sidebar renders all three lists.
- */
-
+import { motion } from "framer-motion";
+import { FolderKanban, Calendar, Bell, Bot } from "lucide-react";
 import ProjectList, { Project } from "./ProjectList";
 import EventList, { CalendarEvent } from "./EventList";
 import ReminderList, { Reminder } from "./ReminderList";
@@ -18,6 +13,8 @@ interface SidebarProps {
   initialReminders?: Reminder[];
 }
 
+const sectionTitle = "px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-muted";
+
 export default function Sidebar({
   userId,
   projects,
@@ -25,34 +22,66 @@ export default function Sidebar({
   initialReminders = [],
 }: SidebarProps) {
   return (
-    <aside className="flex flex-col w-64 shrink-0 bg-gray-900 border-r border-gray-700 overflow-y-auto">
+    <aside className="flex flex-col w-64 shrink-0 bg-bg-surface border-r border-bg-elevated overflow-y-auto scrollbar-thin h-full">
+      {/* Brand header */}
+      <div className="shrink-0 flex items-center gap-2.5 px-4 py-3 border-b border-bg-elevated">
+        <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
+          <Bot className="h-4 w-4 text-accent" strokeWidth={1.5} />
+        </div>
+        <span className="text-sm font-semibold">ARIA</span>
+      </div>
+
       {/* Projects */}
-      <section className="py-4">
-        <h2 className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Projects
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.05 }}
+        className="py-3"
+      >
+        <h2 className={sectionTitle}>
+          <span className="flex items-center gap-1.5">
+            <FolderKanban className="h-3 w-3" />
+            Projects
+          </span>
         </h2>
         <ProjectList projects={projects} />
-      </section>
+      </motion.section>
 
-      <div className="border-t border-gray-800" />
+      <div className="border-t border-bg-elevated mx-3" />
 
       {/* Events */}
-      <section className="py-4">
-        <h2 className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Upcoming
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="py-3"
+      >
+        <h2 className={sectionTitle}>
+          <span className="flex items-center gap-1.5">
+            <Calendar className="h-3 w-3" />
+            Upcoming
+          </span>
         </h2>
         <EventList userId={userId} initialEvents={initialEvents} />
-      </section>
+      </motion.section>
 
-      <div className="border-t border-gray-800" />
+      <div className="border-t border-bg-elevated mx-3" />
 
       {/* Reminders */}
-      <section className="py-4">
-        <h2 className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Reminders
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+        className="py-3"
+      >
+        <h2 className={sectionTitle}>
+          <span className="flex items-center gap-1.5">
+            <Bell className="h-3 w-3" />
+            Reminders
+          </span>
         </h2>
         <ReminderList userId={userId} initialReminders={initialReminders} />
-      </section>
+      </motion.section>
     </aside>
   );
 }

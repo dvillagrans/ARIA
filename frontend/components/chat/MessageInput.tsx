@@ -1,15 +1,8 @@
 "use client";
 
-/**
- * MessageInput — textarea + send button.
- *
- * Enter sends the message; Shift+Enter inserts a newline.
- * The `disabled` prop locks both the textarea and button during in-flight requests.
- *
- * Spec §6: input disabled during pending request.
- */
-
-import { KeyboardEvent, useRef } from "react";
+import { KeyboardEvent, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
+import { Send } from "lucide-react";
 
 interface MessageInputProps {
   value: string;
@@ -26,6 +19,13 @@ export default function MessageInput({
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
+  }, []);
+
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -35,28 +35,37 @@ export default function MessageInput({
     }
   }
 
+  function handleChange(newValue: string) {
+    onChange(newValue);
+    requestAnimationFrame(autoResize);
+  }
+
   return (
-    <div className="flex items-end gap-2 p-4 border-t border-gray-700 bg-gray-900">
-      <textarea
-        ref={textareaRef}
-        className="flex-1 resize-none rounded-xl bg-gray-800 text-gray-100 placeholder-gray-500 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed max-h-40"
-        placeholder="Message ARIA…"
-        rows={1}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        aria-label="Message input"
-      />
-      <button
-        type="button"
-        onClick={onSubmit}
-        disabled={disabled || !value.trim()}
-        className="shrink-0 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3 text-sm font-medium transition-colors"
-        aria-label="Send message"
-      >
-        Send
-      </button>
+    <div className="border-t border-bg-elevated bg-bg-surface/90 backdrop-blur-sm px-3 py-2.5 md:px-4 md:py-3">
+      <div className="flex items-end gap-2 bg-bg-elevated rounded-2xl border border-bg-hover focus-within:border-accent/40 focus-within:shadow-[0_0_0_2px_var(--color-accent-muted)] transition-all px-3 py-1.5">
+        <textarea
+          ref={textareaRef}
+          className="flex-1 resize-none bg-transparent text-text-primary placeholder-text-muted text-sm py-1.5 focus:outline-none max-h-32"
+          placeholder="Message ARIA…"
+          rows={1}
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          aria-label="Message input"
+        />
+        <motion.button
+          type="button"
+          onClick={onSubmit}
+          disabled={disabled || !value.trim()}
+          whileTap={{ scale: 0.92 }}
+          whileHover={{ scale: 1.05 }}
+          className="shrink-0 rounded-full bg-accent hover:bg-accent-hover disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 transition-colors"
+          aria-label="Send message"
+        >
+          <Send className="h-4 w-4" />
+        </motion.button>
+      </div>
     </div>
   );
 }
