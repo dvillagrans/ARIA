@@ -33,6 +33,7 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { isOnline, isSyncing, pendingCount, enqueueMessage, drainQueue } =
     useOfflineQueue();
@@ -125,6 +126,67 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
+
+  // ── File attach ──────────────────────────────────────────────────────
+  async function handleFileAttach(file: File) {
+    if (!projectId || isUploading) return;
+    setIsUploading(true);
+
+    const placeholderId = localId();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: placeholderId,
+        role: "assistant" as const,
+        content: `Uploading **${file.name}**…`,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await fetch(`/api/projects/${projectId}/documents`, {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+
+      if (!res.ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === placeholderId
+              ? { ...m, content: `Upload failed: ${(data.error as string) ?? "unknown error"}` }
+              : m
+          )
+        );
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? {
+                ...m,
+                content: `**${file.name}** added as project context. You can now ask me questions about its content.`,
+              }
+            : m
+        )
+      );
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? { ...m, content: `Upload failed: network error.` }
+            : m
+        )
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   // ── Submit with streaming ─────────────────────────────────────────────
   async function onSubmit() {
@@ -290,6 +352,8 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
           onChange={setInput}
           onSubmit={onSubmit}
           disabled={isLoading}
+          onFileAttach={isProjectChat ? handleFileAttach : undefined}
+          isUploading={isUploading}
         />
       </div>
 

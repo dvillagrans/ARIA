@@ -1,12 +1,15 @@
 "use client";
 
 import { KeyboardEvent, useRef, useCallback } from "react";
+import { Paperclip, Loader2 } from "lucide-react";
 
 interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
   disabled?: boolean;
+  onFileAttach?: (file: File) => void;
+  isUploading?: boolean;
 }
 
 export default function MessageInput({
@@ -14,8 +17,11 @@ export default function MessageInput({
   onChange,
   onSubmit,
   disabled = false,
+  onFileAttach,
+  isUploading = false,
 }: MessageInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -38,10 +44,17 @@ export default function MessageInput({
     requestAnimationFrame(autoResize);
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && onFileAttach) {
+      onFileAttach(file);
+    }
+    // Reset so the same file can be re-selected if needed
+    e.target.value = "";
+  }
+
   return (
-    <div
-      className="border-t border-bg-elevated bg-bg-root px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:pt-4 md:pb-4"
-    >
+    <div className="border-t border-bg-elevated bg-bg-root px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:pt-4 md:pb-4">
       <div
         className="flex items-end gap-3"
         style={{
@@ -51,6 +64,34 @@ export default function MessageInput({
           padding: "10px 12px",
         }}
       >
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
+          className="hidden"
+          onChange={handleFileChange}
+          tabIndex={-1}
+          aria-hidden
+        />
+
+        {/* Paperclip — only shown when onFileAttach is provided */}
+        {onFileAttach && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || isUploading}
+            className="shrink-0 text-text-muted hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed pb-0.5"
+            aria-label="Attach file"
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+          </button>
+        )}
+
         <textarea
           ref={textareaRef}
           className="flex-1 resize-none bg-transparent text-[13px] text-text-primary placeholder-text-muted py-0.5 focus:outline-none max-h-32 leading-relaxed"

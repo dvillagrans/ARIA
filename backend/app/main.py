@@ -19,7 +19,7 @@ from app.middleware.security import (
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
-from app.routes import briefing, chat, connectors, events, health, ingest, reminders
+from app.routes import briefing, chat, connectors, documents, events, health, ingest, reminders
 
 
 def create_app() -> FastAPI:
@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
 
     # Security middleware (order matters: last added = first executed)
     application.add_middleware(SecurityHeadersMiddleware)
-    application.add_middleware(RequestSizeLimitMiddleware, max_bytes=1_048_576)  # 1MB
+    application.add_middleware(RequestSizeLimitMiddleware, max_bytes=10_485_760)  # 10MB for document uploads
     application.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
 
     application.include_router(health.router, tags=["ops"])
@@ -71,6 +71,7 @@ def create_app() -> FastAPI:
     application.include_router(reminders.router, tags=["reminders"])
     application.include_router(events.router, tags=["events"])
     application.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
+    application.include_router(documents.router, tags=["documents"])
 
     # Prometheus metrics endpoint — publicly accessible for scraping.
     # NOTE: CONTENT_TYPE_LATEST from prometheus_client uses version=1.0.0

@@ -17,6 +17,15 @@ interface Note {
   created_at: string;
 }
 
+interface DocumentItem {
+  id: string;
+  name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  status: string;
+  created_at: string;
+}
+
 interface ActivityItem {
   id: string;
   title: string;
@@ -72,6 +81,14 @@ export async function GET(
     .order("created_at", { ascending: false })
     .limit(8);
 
+  // Fetch documents for this project
+  const { data: docItems } = await supabase
+    .from("documents")
+    .select("id, name, mime_type, size_bytes, status, created_at")
+    .eq("project_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
   // Fetch upcoming events for this project (today onwards, sorted ascending)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -119,6 +136,7 @@ export async function GET(
       all: sortedTasks,
     },
     notes: noteList,
+    documents: (docItems ?? []) as DocumentItem[],
     activity: (activityEvents ?? []) as ActivityItem[],
   });
 }

@@ -17,6 +17,7 @@ dependencies = [
   "google-auth-httplib2>=0.2",
   "google-auth-oauthlib>=1.2",
   "prometheus-client>=0.20",
+  "pypdf>=4.0",
 ]
 
 [dependency-groups]

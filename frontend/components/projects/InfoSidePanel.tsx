@@ -36,9 +36,19 @@ interface ActivityItem {
   source: string;
 }
 
+interface DocumentItem {
+  id: string;
+  name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  status: string;
+  created_at: string;
+}
+
 interface PanelData {
   taskStats: TaskStats;
   notes: Note[];
+  documents: DocumentItem[];
   activity: ActivityItem[];
 }
 
@@ -309,6 +319,7 @@ export default function InfoSidePanel({
 
   const taskStats = panelData?.taskStats;
   const notes = panelData?.notes ?? [];
+  const documents = panelData?.documents ?? [];
   const activity = panelData?.activity ?? [];
 
   return (
@@ -528,11 +539,57 @@ export default function InfoSidePanel({
         </Section>
 
         {/* Documents */}
-        <Section id="documents" label="Documents" icon={FolderOpen} collapsed={sectionCollapse.documents} onToggle={toggleSection}>
-          <p className="text-xs text-text-muted pt-0.5">
-            No documents yet.{" "}
-            <span className="text-text-secondary">Upload files and PDFs via chat.</span>
-          </p>
+        <Section
+          id="documents"
+          label={`Documents${documents.length > 0 ? ` · ${documents.length}` : ""}`}
+          icon={FolderOpen}
+          collapsed={sectionCollapse.documents}
+          onToggle={toggleSection}
+        >
+          {loading ? (
+            <div className="space-y-1.5 pt-0.5">
+              {[0, 1].map((i) => <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />)}
+            </div>
+          ) : documents.length === 0 ? (
+            <p className="text-xs text-text-muted pt-0.5">
+              No documents yet —{" "}
+              <span className="text-text-secondary">attach files via the chat (PDF, TXT, MD).</span>
+            </p>
+          ) : (
+            <div className="pt-0.5 flex flex-col gap-1">
+              {documents.map((doc) => {
+                const isPdf = doc.mime_type === "application/pdf" || doc.name.endsWith(".pdf");
+                const sizeMb = doc.size_bytes ? (doc.size_bytes / 1024 / 1024).toFixed(1) : null;
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm border border-border-subtle bg-bg-surface/50"
+                  >
+                    <span className="text-[10px] font-mono text-text-muted shrink-0 uppercase">
+                      {isPdf ? "pdf" : doc.name.split(".").pop() ?? "txt"}
+                    </span>
+                    <span className="text-xs text-text-primary truncate flex-1">{doc.name}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {sizeMb && (
+                        <span className="text-[10px] text-text-muted">{sizeMb}MB</span>
+                      )}
+                      <span
+                        className={`text-[10px] px-1 rounded-sm ${
+                          doc.status === "done"
+                            ? "text-accent bg-accent/10"
+                            : doc.status === "error"
+                            ? "text-red-400 bg-red-950"
+                            : "text-text-muted bg-bg-elevated"
+                        }`}
+                      >
+                        {doc.status === "done" ? "indexed" : doc.status === "error" ? "error" : "…"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Section>
 
       </div>
