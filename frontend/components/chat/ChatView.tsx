@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, WifiOff, Loader2, X } from "lucide-react";
+import { WifiOff, Loader2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
@@ -198,20 +198,16 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
     <main className="flex flex-col h-full bg-bg-root text-text-primary">
       {/* Header */}
       <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={
-            isProjectChat
-              ? { backgroundColor: `${projectColor}25` }
-              : { backgroundColor: "rgb(var(--color-accent) / 0.15)" }
-          }
-        >
-          {isProjectChat ? (
+        {isProjectChat ? (
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${projectColor}25` }}
+          >
             <span className="w-3 h-3 rounded-full" style={{ backgroundColor: projectColor }} />
-          ) : (
-            <Bot className="h-4 w-4 text-accent" strokeWidth={1.5} />
-          )}
-        </div>
+          </div>
+        ) : (
+          <img src="/logo.svg" alt="ARIA" className="w-7 h-7 rounded-lg shrink-0" />
+        )}
         <div className="flex-1 min-w-0">
           <h1 className="text-sm font-semibold truncate">
             {isProjectChat ? projectName : "ARIA"}

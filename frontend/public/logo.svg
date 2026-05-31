@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente principal (Representa la transición de la captura al razonamiento) -->
+    <linearGradient id="ariaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/> <!-- Blue 500 -->
+      <stop offset="100%" stop-color="#8B5CF6"/> <!-- Violet 500 -->
+    </linearGradient>
+    
+    <!-- Resplandor del núcleo (DeepSeek Reasoner) -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Fondo oscuro (Alineado con el target: Developer/Student hybrid) -->
+  <rect width="400" height="400" fill="#0A0A0C" rx="40"/>
+
+  <!-- Anillo exterior (Representa el ecosistema de microservicios y conectores: Github, Gmail, Calendar) -->
+  <circle cx="200" cy="180" r="110" fill="none" stroke="#272732" stroke-width="2" stroke-dasharray="4 8"/>
+  <circle cx="200" cy="180" r="140" fill="none" stroke="#181820" stroke-width="1" stroke-dasharray="2 6"/>
+
+  <!-- La letra 'A' abstracta (Adaptive & Arquitectura de flujo) -->
+  <path d="M200 80 L280 230 H235 L200 160 L165 230 H120 Z" fill="url(#ariaGrad)"/>
+
+  <!-- El Núcleo de Inteligencia (Representa la base vectorial y el Single Recommended Action) -->
+  <circle cx="200" cy="190" r="14" fill="#00E5FF" filter="url(#glow)"/>
+
+  <!-- Conectores del núcleo (La clasificación y el embedding) -->
+  <line x1="200" y1="160" x2="200" y2="176" stroke="#00E5FF" stroke-width="2"/>
+  <line x1="180" y1="210" x2="190" y2="198" stroke="#00E5FF" stroke-width="2"/>
+  <line x1="220" y1="210" x2="210" y2="198" stroke="#00E5FF" stroke-width="2"/>
+
+  <!-- Tipografía -->
+  <text x="200" y="310" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="32" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="10">ARIA</text>
+  <text x="200" y="335" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="500" fill="#71718A" text-anchor="middle" letter-spacing="5">PERSONAL OS</text>
+</svg>
