@@ -6,8 +6,10 @@ import { Bot, WifiOff, Loader2, ChevronLeft, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MessageList from "@/components/chat/MessageList";
 import MessageInput from "@/components/chat/MessageInput";
+import ReminderNotification from "@/components/notifications/ReminderNotification";
 import type { Message as BaseMessage } from "@/components/chat/MessageList";
 import { useOfflineQueue } from "@/lib/hooks/use-offline-queue";
+import { useReminderPoll } from "@/lib/hooks/use-reminder-poll";
 
 interface Message extends BaseMessage {
   queued?: boolean;
@@ -36,6 +38,8 @@ export default function ChatPage() {
 
   const { isOnline, isSyncing, pendingCount, enqueueMessage, drainQueue } =
     useOfflineQueue();
+
+  const { dueReminders, acknowledge, dismiss } = useReminderPoll();
 
   const handleMessageSent = useCallback(
     (localId: string, responseData: { confirmation_text: string }) => {
@@ -284,6 +288,13 @@ export default function ChatPage() {
           disabled={isLoading}
         />
       </div>
+
+      {/* Reminder notifications */}
+      <ReminderNotification
+        reminders={dueReminders}
+        onAcknowledge={acknowledge}
+        onDismiss={dismiss}
+      />
     </main>
   );
 }

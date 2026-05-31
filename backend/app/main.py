@@ -14,7 +14,7 @@ from starlette.responses import Response
 
 from app.core import metrics
 from app.middleware.metrics import MetricsMiddleware
-from app.routes import briefing, chat, connectors, health, ingest
+from app.routes import briefing, chat, connectors, health, ingest, reminders
 
 
 def create_app() -> FastAPI:
@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
     application.include_router(chat.router, tags=["chat"])
     application.include_router(ingest.router, tags=["ingest"])
     application.include_router(briefing.router, tags=["briefing"])
+    application.include_router(reminders.router, tags=["reminders"])
     application.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
 
     # Prometheus metrics endpoint — publicly accessible for scraping.
