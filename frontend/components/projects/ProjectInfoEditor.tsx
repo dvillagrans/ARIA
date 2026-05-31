@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
 
 export interface ProjectLink {
@@ -33,7 +32,6 @@ export default function ProjectInfoEditor({
   initialNotes,
   initialGithubRepo,
 }: Props) {
-  const router = useRouter();
   const [links, setLinks] = useState<ProjectLink[]>(initialLinks);
   const [notes, setNotes] = useState(initialNotes);
   const [githubRepo, setGithubRepo] = useState(initialGithubRepo);
@@ -87,7 +85,6 @@ export default function ProjectInfoEditor({
       }
       setLinks(cleaned);
       setStatus("saved");
-      router.refresh();
     } catch {
       setError("Network error — changes not saved.");
       setStatus("error");
