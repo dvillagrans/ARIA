@@ -59,6 +59,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
           id: nextId(),
           role: "assistant",
           content: responseData.confirmation_text ?? "Done.",
+          created_at: new Date().toISOString(),
         };
         return [...withoutQueued, assistantMsg];
       });
@@ -91,7 +92,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
 
       let query = supabase
         .from("conversations")
-        .select("id, role, content, metadata")
+        .select("id, role, content, metadata, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true })
         .limit(20);
@@ -116,6 +117,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
             role: row.role as "user" | "assistant",
             content: row.content,
             metadata: row.metadata ?? undefined,
+            created_at: row.created_at ?? undefined,
           }))
         : [];
 
@@ -176,7 +178,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
     optimisticIdRef.current = optimisticId;
     setMessages((prev) => [
       ...prev,
-      { id: optimisticId, role: "user", content: trimmed },
+      { id: optimisticId, role: "user", content: trimmed, created_at: new Date().toISOString() },
     ]);
 
     if (!isOnline && !isProjectChat) {
@@ -213,7 +215,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { id: nextId(), role: "assistant", content: data.confirmation_text ?? "Done." },
+        { id: nextId(), role: "assistant", content: data.confirmation_text ?? "Done.", created_at: new Date().toISOString() },
       ]);
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));

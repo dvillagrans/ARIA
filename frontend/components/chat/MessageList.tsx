@@ -11,6 +11,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   metadata?: Record<string, unknown>;
+  created_at?: string;
 }
 
 interface MessageListProps {
@@ -101,7 +102,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
                 </div>
                 {showTime && (
                   <p className={`text-[10px] text-text-muted mt-1 ${isUser ? "text-right" : "text-left"}`}>
-                    {formatTime(new Date())}
+                    {formatTime(msg.created_at ? new Date(msg.created_at) : new Date())}
                   </p>
                 )}
               </div>
