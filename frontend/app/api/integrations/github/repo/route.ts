@@ -44,7 +44,10 @@ interface GitHubReadmeRaw {
 
 async function safeFetch<T>(url: string, headers: HeadersInit): Promise<T | null> {
   try {
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, {
+      headers,
+      next: { revalidate: 300 }, // cache 5 min server-side
+    });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
