@@ -145,9 +145,10 @@ async def sync(
     }
 
     # --- 2. Linked repos ---------------------------------------------------
-    proj_res = await db.table("projects").select("github_repo").eq(
+    proj_res = await db.table("projects").select("name, github_repo").eq(
         "user_id", str(user_id)
     ).execute()
+
     def _normalize_repo(raw: str) -> str:
         raw = raw.strip().rstrip("/")
         if raw.startswith("https://github.com/"):
@@ -156,11 +157,14 @@ async def sync(
             raw = raw[len("github.com/"):]
         return raw
 
-    linked_repos: set[str] = {
-        _normalize_repo(p["github_repo"])
+    # Map normalized repo slug → ARIA project name so project_hint matches
+    # what the fuzzy resolver expects (project name, not the repo slug).
+    repo_to_project_name: dict[str, str] = {
+        _normalize_repo(p["github_repo"]): p["name"]
         for p in (proj_res.data or [])
-        if p.get("github_repo")
+        if p.get("github_repo") and p.get("name")
     }
+    linked_repos: set[str] = set(repo_to_project_name.keys())
 
     async with httpx.AsyncClient() as client:
         # --- 3. Notifications ----------------------------------------------
@@ -179,6 +183,8 @@ async def sync(
 
         # --- 4. Issues, PRs, README per linked repo ------------------------
         for repo in linked_repos:
+            project_name = repo_to_project_name.get(repo, repo)
+
             # Issues
             try:
                 issues_resp = await client.get(
@@ -195,7 +201,7 @@ async def sync(
                         title=issue["title"],
                         body=(issue.get("body") or "")[:2000],
                         external_id=f"github:issue:{repo}:{issue['number']}",
-                        project_hint=repo,
+                        project_hint=project_name,
                     )
                     for issue in issues_resp.json()
                 ]
@@ -221,7 +227,7 @@ async def sync(
                         title=f"PR: {pr['title']}",
                         body=(pr.get("body") or "")[:2000],
                         external_id=f"github:pr:{repo}:{pr['number']}",
-                        project_hint=repo,
+                        project_hint=project_name,
                     )
                     for pr in prs_resp.json()
                 ]
@@ -250,7 +256,7 @@ async def sync(
                     title=f"README: {repo}",
                     body=decoded[:4000],
                     external_id=f"github:readme:{repo}",
-                    project_hint=repo,
+                    project_hint=project_name,
                 )
                 await _ingest_requests([readme_req], db, embedder, settings, result)
             except Exception as exc:
