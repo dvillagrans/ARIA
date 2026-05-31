@@ -25,8 +25,8 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Parse the request body (browser sends only { message }).
-  let body: { message: string };
+  // 2. Parse the request body (browser sends { message } or { message, project_id }).
+  let body: { message: string; project_id?: string };
   try {
     body = await req.json();
   } catch {
@@ -49,6 +49,7 @@ export async function POST(req: Request): Promise<Response> {
       body: JSON.stringify({
         message: body.message,
         user_id: user.id,
+        project_id: body.project_id ?? null,
       }),
     });
   } catch (err) {

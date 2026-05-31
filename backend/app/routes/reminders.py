@@ -46,7 +46,7 @@ async def get_due_reminders(
             .eq("user_id", user_id)
             .eq("is_done", False)
             .lte("due_at", now)
-            .order("due_at", ascending=True)
+            .order("due_at", desc=False)
             .limit(20)
             .execute()
         )

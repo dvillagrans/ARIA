@@ -32,6 +32,9 @@ export default function RootLayout({
             src="//unpkg.com/react-grab/dist/index.global.js"
             crossOrigin="anonymous"
             strategy="beforeInteractive"
+            data-options={JSON.stringify(
+              { activationMode: "toggle", allowActivationInsideInput: true, maxContextLines: 3 }
+            )}
           />
         )}
       </head>

@@ -45,6 +45,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _turns(
+    request: ChatRequest,
+    *,
+    assistant_content: str,
+    metadata: dict,
+) -> tuple[dict, dict]:
+    """Build user + assistant conversation turn dicts, optionally tagging project_id."""
+    base: dict = {"user_id": str(request.user_id)}
+    if request.project_id:
+        base["project_id"] = str(request.project_id)
+    user_turn = {**base, "role": "user", "content": request.message, "metadata": {}}
+    assistant_turn = {**base, "role": "assistant", "content": assistant_content, "metadata": metadata}
+    return user_turn, assistant_turn
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
@@ -125,8 +140,13 @@ async def _chat_impl(
 
     # --- CAPTURE intent ---
     if isinstance(intent_obj, CaptureIntent):
-        project = await project_resolver.resolve(intent_obj.project_hint, projects)
-        project_id = UUID(project["id"]) if project else None
+        # If the request already carries a project_id (project-scoped chat), use it
+        # directly and skip the fuzzy resolver entirely.
+        if request.project_id:
+            project_id: UUID | None = request.project_id
+        else:
+            project = await project_resolver.resolve(intent_obj.project_hint, projects)
+            project_id = UUID(project["id"]) if project else None
 
         if project_id is None:
             logger.error("chat: no project resolved for user %s", request.user_id)
@@ -175,18 +195,7 @@ async def _chat_impl(
             "classifier_raw": intent_obj.classifier_raw,
         }
 
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": confirmation_text,
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content=confirmation_text, metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001
@@ -265,18 +274,7 @@ async def _chat_impl(
             "classifier_raw": intent_obj.classifier_raw,
         }
 
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": confirmation_text,
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content=confirmation_text, metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001
@@ -315,18 +313,7 @@ async def _chat_impl(
             "classifier_raw": intent_obj.classifier_raw,
         }
 
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": answer_text,
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content=answer_text, metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001
@@ -381,18 +368,7 @@ async def _chat_impl(
                     "classifier_raw": intent_obj.classifier_raw,
                 }
 
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": confirmation_text,
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content=confirmation_text, metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001
@@ -422,18 +398,7 @@ async def _chat_impl(
             "intent": "conversation",
             "classifier_raw": intent_obj.classifier_raw,
         }
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": reply_text,
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content=reply_text, metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001
@@ -459,18 +424,7 @@ async def _chat_impl(
             "intent": getattr(intent_obj, "intent", "unknown"),
             "classifier_raw": getattr(intent_obj, "classifier_raw", {}),
         }
-        user_turn = {
-            "user_id": str(request.user_id),
-            "role": "user",
-            "content": request.message,
-            "metadata": {},
-        }
-        assistant_turn = {
-            "user_id": str(request.user_id),
-            "role": "assistant",
-            "content": "Got it.",
-            "metadata": metadata,
-        }
+        user_turn, assistant_turn = _turns(request, assistant_content="Got it.", metadata=metadata)
         try:
             await conversation_service.save(user_turn, assistant_turn, db)
         except Exception as exc:  # noqa: BLE001

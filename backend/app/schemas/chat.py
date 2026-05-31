@@ -15,6 +15,7 @@ from pydantic import BaseModel, UUID4
 class ChatRequest(BaseModel):
     message: str
     user_id: UUID4
+    project_id: UUID4 | None = None
 
 
 class ChatResponse(BaseModel):
