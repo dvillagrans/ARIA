@@ -32,6 +32,13 @@ class DueReminder(BaseModel):
     project_id: str | None = None
 
 
+class ReminderUpdate(BaseModel):
+    title: str | None = None
+    due_at: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+
+
 @router.get("/reminders/due", response_model=list[DueReminder])
 async def get_due_reminders(
     user_id: str,
@@ -90,3 +97,67 @@ async def acknowledge_reminder(
         raise HTTPException(status_code=404, detail="Reminder not found")
 
     return {"status": "acknowledged", "id": reminder_id}
+
+
+@router.patch("/reminders/{reminder_id}")
+async def update_reminder(
+    reminder_id: str,
+    body: ReminderUpdate,
+    user_id: str,
+    db=Depends(get_async_supabase),
+) -> dict:
+    """Update a reminder's title, due_at, amount, or currency."""
+    updates = {}
+    if body.title is not None:
+        updates["title"] = body.title
+    if body.due_at is not None:
+        updates["due_at"] = body.due_at
+    if body.amount is not None:
+        updates["amount"] = body.amount
+    if body.currency is not None:
+        updates["currency"] = body.currency
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    try:
+        resp = await (
+            db.table("reminders")
+            .update(updates)
+            .eq("id", reminder_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as exc:
+        logger.error("reminders/update: failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Database error")
+
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    return {"status": "updated", "id": reminder_id}
+
+
+@router.delete("/reminders/{reminder_id}")
+async def delete_reminder(
+    reminder_id: str,
+    user_id: str,
+    db=Depends(get_async_supabase),
+) -> dict:
+    """Delete a reminder permanently."""
+    try:
+        resp = await (
+            db.table("reminders")
+            .delete()
+            .eq("id", reminder_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as exc:
+        logger.error("reminders/delete: failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Database error")
+
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    return {"status": "deleted", "id": reminder_id}
