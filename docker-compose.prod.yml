@@ -3,11 +3,27 @@ services:
     image: ghcr.io/dvillagrans/aria-backend:latest
     container_name: aria-fastapi
     env_file: .env
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aria-api.rule=Host(`aria-api.dvillagrans.dev`)"
+      - "traefik.http.routers.aria-api.entrypoints=websecure"
+      - "traefik.http.routers.aria-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.aria-api.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.aria-api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.aria-api-ratelimit.ratelimit.burst=50"
+      - "traefik.http.routers.aria-api.middlewares=aria-api-ratelimit"
+    networks:
+      - default
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+networks:
+  default:
+    external: true
+    name: timeup-network

@@ -14,6 +14,11 @@ from starlette.responses import Response
 
 from app.core import metrics
 from app.middleware.metrics import MetricsMiddleware
+from app.middleware.security import (
+    RateLimitMiddleware,
+    RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.routes import briefing, chat, connectors, events, health, ingest, reminders
 
 
@@ -43,7 +48,7 @@ def create_app() -> FastAPI:
     # CORS: allow the Next.js dev server (localhost + Tailscale dev access).
     # Set CORS_ORIGINS env var to override (comma-separated).
     # Tighten origins before any production deployment.
-    _default_origins = "http://localhost:3000,http://chi:3000,http://100.124.11.63:3000"
+    _default_origins = "http://localhost:3000,http://chi:3000,http://100.124.11.63:3000,https://aria.dvillagrans.dev"
     _cors_origins_raw = os.getenv("CORS_ORIGINS", _default_origins)
     _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
     application.add_middleware(
@@ -53,6 +58,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Security middleware (order matters: last added = first executed)
+    application.add_middleware(SecurityHeadersMiddleware)
+    application.add_middleware(RequestSizeLimitMiddleware, max_bytes=1_048_576)  # 1MB
+    application.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
 
     application.include_router(health.router, tags=["ops"])
     application.include_router(chat.router, tags=["chat"])
