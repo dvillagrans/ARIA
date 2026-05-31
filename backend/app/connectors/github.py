@@ -148,8 +148,16 @@ async def sync(
     proj_res = await db.table("projects").select("github_repo").eq(
         "user_id", str(user_id)
     ).execute()
+    def _normalize_repo(raw: str) -> str:
+        raw = raw.strip().rstrip("/")
+        if raw.startswith("https://github.com/"):
+            raw = raw[len("https://github.com/"):]
+        elif raw.startswith("github.com/"):
+            raw = raw[len("github.com/"):]
+        return raw
+
     linked_repos: set[str] = {
-        p["github_repo"]
+        _normalize_repo(p["github_repo"])
         for p in (proj_res.data or [])
         if p.get("github_repo")
     }

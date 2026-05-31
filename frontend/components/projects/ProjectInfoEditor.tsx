@@ -177,7 +177,7 @@ export default function ProjectInfoEditor({
             setGithubRepo(e.target.value);
             setStatus("idle");
           }}
-          placeholder="owner/repo"
+          placeholder="owner/repo or https://github.com/owner/repo"
           className="w-full rounded-sm border border-border-subtle bg-bg-root px-2.5 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
         />
         <p className="mt-1 text-xs text-text-muted">Used to sync issues, PRs, and README into context.</p>
