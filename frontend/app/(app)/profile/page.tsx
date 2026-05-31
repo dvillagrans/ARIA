@@ -92,12 +92,14 @@ export default function ProfilePage() {
   return (
     <main className="flex flex-col h-full bg-bg-root">
       {/* Header */}
-      <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
-        <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
-          <User className="h-4 w-4 text-accent" strokeWidth={1.5} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-sm font-semibold">Profile</h1>
+      <header className="shrink-0 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm pt-safe">
+        <div className="flex items-center gap-2 px-4 py-2.5">
+          <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+            <User className="h-4 w-4 text-accent" strokeWidth={1.5} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold">Profile</h1>
+          </div>
         </div>
       </header>
 

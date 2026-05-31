@@ -200,7 +200,8 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
     <main className="flex flex-col flex-1 min-h-0 bg-bg-root text-text-primary">
       {/* Header */}
       {!hideHeader && (
-        <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
+        <header className="shrink-0 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm pt-safe">
+          <div className="flex items-center gap-2 px-4 py-2.5">
           {isProjectChat ? (
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -222,6 +223,7 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
                 <p className="text-[11px]" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
               )
             )}
+          </div>
           </div>
         </header>
       )}

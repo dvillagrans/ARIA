@@ -260,23 +260,25 @@ export default function ProjectsPage() {
 
 function Header({ count, onNew }: { count?: number; onNew: () => void }) {
   return (
-    <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
-      <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
-        <FolderKanban className="h-4 w-4 text-accent" strokeWidth={1.5} />
+    <header className="shrink-0 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm pt-safe">
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0">
+          <FolderKanban className="h-4 w-4 text-accent" strokeWidth={1.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-sm font-semibold">Projects</h1>
+          {count != null && (
+            <p className="text-xs text-text-muted">{count} active</p>
+          )}
+        </div>
+        <button
+          onClick={onNew}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New
+        </button>
       </div>
-      <div className="flex-1 min-w-0">
-        <h1 className="text-sm font-semibold">Projects</h1>
-        {count != null && (
-          <p className="text-xs text-text-muted">{count} active</p>
-        )}
-      </div>
-      <button
-        onClick={onNew}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/15 hover:bg-accent/25 text-accent text-xs font-medium transition-colors"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        New
-      </button>
     </header>
   );
 }
