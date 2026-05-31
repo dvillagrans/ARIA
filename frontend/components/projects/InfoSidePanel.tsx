@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronRight, FileText, GitBranch, CheckSquare, Clock, Activity, FolderOpen } from "lucide-react";
+import { ChevronRight, FileText, GitBranch, CheckSquare, Activity, FolderOpen } from "lucide-react";
 import GitHubRepoPanel from "./GitHubRepoPanel";
 
 interface Task {
@@ -24,6 +24,7 @@ interface TaskStats {
   total: number;
   byStatus: Record<string, number>;
   urgent: Task[];
+  all: Task[];
 }
 
 interface ActivityItem {
@@ -252,20 +253,17 @@ export default function InfoSidePanel({
                 ))}
               </div>
 
-              {/* Urgent tasks */}
-              {taskStats.urgent.length > 0 && (
-                <div className="border border-border-subtle rounded-sm overflow-hidden">
-                  <div className="px-2.5 py-1.5 bg-bg-elevated text-[10px] font-mono uppercase tracking-widest text-text-muted flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    Urgent
-                  </div>
-                  {taskStats.urgent.map((task) => (
+              {/* Full task list */}
+              <div className="border border-border-subtle rounded-sm overflow-hidden">
+                {taskStats.all.map((task, i) => {
+                  const isDone = task.status === "done" || task.status === "completed";
+                  return (
                     <div
                       key={task.id}
-                      className="flex items-start gap-2 px-2.5 py-1.5 border-t border-border-subtle"
+                      className={`flex items-start gap-2 px-2.5 py-1.5 ${i > 0 ? "border-t border-border-subtle" : ""} ${isDone ? "opacity-40" : ""}`}
                     >
                       <span
-                        className={`shrink-0 text-[10px] px-1 rounded-sm ${
+                        className={`shrink-0 text-[10px] px-1 rounded-sm mt-0.5 ${
                           task.priority <= 2
                             ? "bg-red-950 text-red-400"
                             : "bg-bg-elevated text-text-muted"
@@ -274,20 +272,27 @@ export default function InfoSidePanel({
                         P{task.priority}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-text-primary truncate">{task.title}</p>
-                        {task.deadline && (
-                          <p className="text-[10px] text-text-muted">
-                            {new Date(task.deadline).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </p>
-                        )}
+                        <p className={`text-xs truncate ${isDone ? "line-through text-text-muted" : "text-text-primary"}`}>
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-[10px] ${statusBadgeClass(task.status).includes("accent") ? "text-accent" : "text-text-muted"}`}>
+                            {task.status}
+                          </span>
+                          {task.deadline && (
+                            <span className="text-[10px] text-text-muted">
+                              {new Date(task.deadline).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
             </div>
           )}
         </Section>

@@ -103,11 +103,19 @@ export async function GET(
     })
     .slice(0, 3);
 
+  const statusOrder: Record<string, number> = { pending: 0, in_progress: 1 };
+  const sortedTasks = [...taskList].sort((a, b) => {
+    const sa = statusOrder[a.status] ?? 2;
+    const sb = statusOrder[b.status] ?? 2;
+    return sa !== sb ? sa - sb : a.priority - b.priority;
+  });
+
   return NextResponse.json({
     taskStats: {
       total: taskList.length,
       byStatus,
       urgent,
+      all: sortedTasks,
     },
     notes: noteList,
     activity: (activityEvents ?? []) as ActivityItem[],
