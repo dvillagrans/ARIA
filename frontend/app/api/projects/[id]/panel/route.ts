@@ -17,6 +17,14 @@ interface Note {
   created_at: string;
 }
 
+interface ActivityItem {
+  id: string;
+  title: string;
+  starts_at: string;
+  type: string;
+  source: string;
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -63,6 +71,18 @@ export async function GET(
     .order("created_at", { ascending: false })
     .limit(8);
 
+  // Fetch recent + upcoming events for this project
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: activityEvents } = await supabase
+    .from("events")
+    .select("id, title, starts_at, type, source")
+    .eq("project_id", id)
+    .gte("starts_at", thirtyDaysAgo.toISOString())
+    .order("starts_at", { ascending: false })
+    .limit(8);
+
   const taskList: Task[] = (tasks ?? []) as Task[];
   const noteList: Note[] = (notes ?? []) as Note[];
 
@@ -90,5 +110,6 @@ export async function GET(
       urgent,
     },
     notes: noteList,
+    activity: (activityEvents ?? []) as ActivityItem[],
   });
 }
