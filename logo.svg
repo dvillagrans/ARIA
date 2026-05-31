@@ -1,40 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-  <defs>
-    <!-- Gradiente principal (Representa la transición de la captura al razonamiento) -->
-    <linearGradient id="ariaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3B82F6"/> <!-- Blue 500 -->
-      <stop offset="100%" stop-color="#8B5CF6"/> <!-- Violet 500 -->
-    </linearGradient>
-    
-    <!-- Resplandor del núcleo (DeepSeek Reasoner) -->
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
+  <!-- Fondo Editor/Terminal (Zinc 950) -->
+  <rect width="400" height="400" fill="#09090B" rx="40"/>
 
-  <!-- Fondo oscuro (Alineado con el target: Developer/Student hybrid) -->
-  <rect width="400" height="400" fill="#0A0A0C" rx="40"/>
+  <!-- Retícula técnica ortogonal (Zinc 900) - representa la base pgvector -->
+  <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+    <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#18181B" stroke-width="1"/>
+  </pattern>
+  <rect width="400" height="400" fill="url(#grid)" rx="40"/>
 
-  <!-- Anillo exterior (Representa el ecosistema de microservicios y conectores: Github, Gmail, Calendar) -->
-  <circle cx="200" cy="180" r="110" fill="none" stroke="#272732" stroke-width="2" stroke-dasharray="4 8"/>
-  <circle cx="200" cy="180" r="140" fill="none" stroke="#181820" stroke-width="1" stroke-dasharray="2 6"/>
+  <g transform="translate(0, 5)">
+    <!-- Estructura Principal Continua (Flujo de datos y razonamiento) -->
+    <!-- Sube, baja a la derecha, y cruza violentamente hacia la izquierda -->
+    <path d="M 110 260 L 200 80 L 245 170 L 140 170" fill="none" stroke="#F4F4F5" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4"/>
 
-  <!-- La letra 'A' abstracta (Adaptive & Arquitectura de flujo) -->
-  <path d="M200 80 L280 230 H235 L200 160 L165 230 H120 Z" fill="url(#ariaGrad)"/>
+    <!-- Nodo de integración aislado (Microservicios inyectando al /ingest) -->
+    <path d="M 270 220 L 290 260" fill="none" stroke="#F4F4F5" stroke-width="28" stroke-linecap="square"/>
 
-  <!-- El Núcleo de Inteligencia (Representa la base vectorial y el Single Recommended Action) -->
-  <circle cx="200" cy="190" r="14" fill="#00E5FF" filter="url(#glow)"/>
+    <!-- The Single Recommended Action / Prompt Cursor (Verde Terminal) -->
+    <!-- Bloque sólido ubicado exactamente al final de la barra cruzada -->
+    <rect x="98" y="156" width="28" height="28" fill="#10B981"/>
+  </g>
 
-  <!-- Conectores del núcleo (La clasificación y el embedding) -->
-  <line x1="200" y1="160" x2="200" y2="176" stroke="#00E5FF" stroke-width="2"/>
-  <line x1="180" y1="210" x2="190" y2="198" stroke="#00E5FF" stroke-width="2"/>
-  <line x1="220" y1="210" x2="210" y2="198" stroke="#00E5FF" stroke-width="2"/>
-
-  <!-- Tipografía -->
-  <text x="200" y="310" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="32" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="10">ARIA</text>
-  <text x="200" y="335" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="11" font-weight="500" fill="#71718A" text-anchor="middle" letter-spacing="5">PERSONAL OS</text>
+  <!-- Tipografía Monospace (Estética Developer OS) -->
+  <text x="200" y="335" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="700" fill="#F4F4F5" text-anchor="middle" letter-spacing="14">ARIA</text>
+  <text x="200" y="360" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="11" font-weight="500" fill="#52525B" text-anchor="middle" letter-spacing="6">PERSONAL OS</text>
 </svg>
