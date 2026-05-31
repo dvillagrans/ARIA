@@ -26,6 +26,8 @@ export default function ProfilePage() {
   const [githubToken, setGithubToken] = useState("");
   const [githubSaveStatus, setGithubSaveStatus] = useState<GithubSaveStatus>("idle");
   const [githubError, setGithubError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -63,6 +65,25 @@ export default function ProfilePage() {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
+  }
+
+  async function handleSyncGithub() {
+    if (syncing) return;
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/integrations/github/sync", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncResult(data.error ?? "Sync failed.");
+      } else {
+        setSyncResult(`Done: ${data.created ?? 0} new, ${data.skipped ?? 0} skipped`);
+      }
+    } catch {
+      setSyncResult("Network error — sync failed.");
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function handleSaveGithub() {
@@ -164,7 +185,7 @@ export default function ProfilePage() {
                   {githubSaveStatus === "error" && githubError && (
                     <p className="text-xs text-status-error-fg">{githubError}</p>
                   )}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <button
                       onClick={handleSaveGithub}
                       disabled={githubSaveStatus === "saving"}
@@ -172,8 +193,20 @@ export default function ProfilePage() {
                     >
                       {githubSaveStatus === "saving" ? "Saving…" : "Save token"}
                     </button>
+                    {githubStatus === "connected" && (
+                      <button
+                        onClick={handleSyncGithub}
+                        disabled={syncing}
+                        className="rounded-sm border border-border-subtle px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {syncing ? "Syncing…" : "Sync now"}
+                      </button>
+                    )}
                     {githubSaveStatus === "saved" && (
                       <span className="text-xs text-accent">Saved</span>
+                    )}
+                    {syncResult && (
+                      <span className="text-xs text-text-muted">{syncResult}</span>
                     )}
                   </div>
                 </>

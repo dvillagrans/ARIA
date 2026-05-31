@@ -44,6 +44,19 @@ async def sync_github(
     return _sync_result_dict(result)
 
 
+@router.post("/sync/github/me")
+async def sync_github_me(
+    user_id: UUID,
+    db: AsyncClient = Depends(get_async_supabase),
+    llm: LLMProvider = Depends(get_llm),
+    embedder: EmbeddingProvider = Depends(get_embedder),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """User-initiated GitHub sync (no API key required; user_id verified by the Next.js proxy)."""
+    result = await github_connector.sync(db, llm, embedder, settings, user_id=user_id)
+    return _sync_result_dict(result)
+
+
 @router.post("/sync/gmail")
 async def sync_gmail(
     body: SyncRequest,
