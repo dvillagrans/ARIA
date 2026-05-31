@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { FolderKanban, Calendar, Bell, Bot } from "lucide-react";
 import ProjectList, { Project } from "./ProjectList";
@@ -23,13 +24,16 @@ export default function Sidebar({
 }: SidebarProps) {
   return (
     <aside className="flex flex-col w-64 shrink-0 bg-bg-surface border-r border-bg-elevated overflow-y-auto scrollbar-thin h-full">
-      {/* Brand header */}
-      <div className="shrink-0 flex items-center gap-2.5 px-4 py-3 border-b border-bg-elevated">
+      {/* Brand header — links to general chat */}
+      <Link
+        href="/chat"
+        className="shrink-0 flex items-center gap-2.5 px-4 py-3 border-b border-bg-elevated hover:bg-bg-elevated/50 transition-colors"
+      >
         <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
           <Bot className="h-4 w-4 text-accent" strokeWidth={1.5} />
         </div>
         <span className="text-sm font-semibold">ARIA</span>
-      </div>
+      </Link>
 
       {/* Projects */}
       <motion.section

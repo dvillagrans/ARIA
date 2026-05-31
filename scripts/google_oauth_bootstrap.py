@@ -54,7 +54,23 @@ def main():
     print(f"Scopes: {', '.join(SCOPES)}")
     print()
 
-    creds = flow.run_local_server(port=0)
+    try:
+        creds = flow.run_local_server(port=8080)
+    except Exception:
+        # Fallback: print URL for manual copy
+        auth_url, _ = flow.authorization_url(prompt="consent")
+        print()
+        print("=" * 60)
+        print("Could not open browser automatically.")
+        print()
+        print("Open this URL in your browser:")
+        print(auth_url)
+        print()
+        print("After authorizing, copy the 'code' parameter from the")
+        print("redirect URL and paste it here:")
+        code = input("Code: ").strip()
+        flow.fetch_token(code=code)
+        creds = flow.credentials
 
     print()
     print("=" * 60)

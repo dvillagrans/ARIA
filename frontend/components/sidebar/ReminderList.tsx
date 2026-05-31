@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Pencil, Trash2, Check, X } from "lucide-react";
+import { Bell, Pencil, Trash2, Check, X, CalendarSync } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -27,6 +27,8 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   useRealtime<Reminder>(
     [{ table: "reminders", filter: `user_id=eq.${userId}` }],
@@ -103,6 +105,24 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
     setReminders((prev) => prev.filter((r) => r.id !== id));
   }
 
+  async function syncAll() {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/reminders/sync-all", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setSyncResult(`Synced ${data.synced}/${data.total}`);
+      } else {
+        setSyncResult("Sync failed");
+      }
+    } catch {
+      setSyncResult("Sync failed");
+    }
+    setIsSyncing(false);
+    setTimeout(() => setSyncResult(null), 3000);
+  }
+
   if (reminders.length === 0) {
     return (
       <EmptyState
@@ -114,7 +134,20 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
   }
 
   return (
-    <ul className="space-y-0.5 px-2">
+    <div className="px-2">
+      <div className="flex items-center justify-between px-2.5 py-1 mb-1">
+        <span className="text-[10px] text-text-muted uppercase tracking-wider">Reminders</span>
+        <button
+          onClick={syncAll}
+          disabled={isSyncing}
+          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-text-muted hover:text-accent rounded transition-colors disabled:opacity-50"
+          title="Sync all to Google Calendar"
+        >
+          <CalendarSync className={`h-3 w-3 ${isSyncing ? "animate-spin" : ""}`} />
+          {syncResult && <span className="text-accent">{syncResult}</span>}
+        </button>
+      </div>
+      <ul className="space-y-0.5">
       {reminders.map((reminder) => {
         const isEditing = editingId === reminder.id;
 
@@ -194,5 +227,6 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
         );
       })}
     </ul>
+    </div>
   );
 }

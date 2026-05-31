@@ -1,22 +1,24 @@
 """
-GET /reminders/due — returns overdue reminders that haven't been acknowledged.
+Reminders CRUD + Google Calendar sync.
 
-Returns reminders where due_at <= now AND is_done = false.
-Used by the frontend polling hook to show reminder notifications.
-
-POST /reminders/{id}/acknowledge — marks a reminder as done.
+GET /reminders/due — overdue reminders
+POST /reminders/{id}/acknowledge — mark done + delete calendar event
+PATCH /reminders/{id}/update — update reminder + sync calendar
+DELETE /reminders/{id} — delete reminder + delete calendar event
+POST /reminders/sync-all — bulk sync all pending reminders to calendar
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.config import Settings, get_settings
 from app.core.deps import get_async_supabase
+from app.services.calendar_sync import delete_calendar_event, sync_reminder_to_calendar
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ class DueReminder(BaseModel):
     amount: float | None = None
     currency: str | None = None
     project_id: str | None = None
+    calendar_event_id: str | None = None
 
 
 class ReminderUpdate(BaseModel):
@@ -49,7 +52,7 @@ async def get_due_reminders(
     try:
         resp = await (
             db.table("reminders")
-            .select("id, title, due_at, amount, currency, project_id")
+            .select("id, title, due_at, amount, currency, project_id, calendar_event_id")
             .eq("user_id", user_id)
             .eq("is_done", False)
             .lte("due_at", now)
@@ -69,6 +72,7 @@ async def get_due_reminders(
             amount=r.get("amount"),
             currency=r.get("currency"),
             project_id=str(r["project_id"]) if r.get("project_id") else None,
+            calendar_event_id=r.get("calendar_event_id"),
         )
         for r in (resp.data or [])
     ]
@@ -79,10 +83,27 @@ async def acknowledge_reminder(
     reminder_id: str,
     user_id: str,
     db=Depends(get_async_supabase),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
-    """Mark a reminder as done (is_done = true)."""
+    """Mark a reminder as done and delete its Google Calendar event."""
+    # Fetch the reminder to get calendar_event_id
     try:
-        resp = await (
+        fetch = await (
+            db.table("reminders")
+            .select("calendar_event_id")
+            .eq("id", reminder_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    cal_event_id = fetch.data.get("calendar_event_id") if fetch.data else None
+
+    # Mark as done
+    try:
+        await (
             db.table("reminders")
             .update({"is_done": True})
             .eq("id", reminder_id)
@@ -93,8 +114,9 @@ async def acknowledge_reminder(
         logger.error("reminders/acknowledge: update failed: %s", exc)
         raise HTTPException(status_code=500, detail="Database error")
 
-    if not resp.data:
-        raise HTTPException(status_code=404, detail="Reminder not found")
+    # Delete calendar event
+    if cal_event_id:
+        await delete_calendar_event(cal_event_id, settings)
 
     return {"status": "acknowledged", "id": reminder_id}
 
@@ -105,8 +127,9 @@ async def update_reminder(
     body: ReminderUpdate,
     user_id: str,
     db=Depends(get_async_supabase),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
-    """Update a reminder's title, due_at, amount, or currency."""
+    """Update a reminder and sync changes to Google Calendar."""
     updates = {}
     if body.title is not None:
         updates["title"] = body.title
@@ -135,7 +158,31 @@ async def update_reminder(
     if not resp.data:
         raise HTTPException(status_code=404, detail="Reminder not found")
 
-    return {"status": "updated", "id": reminder_id}
+    # Sync to Google Calendar
+    reminder = resp.data[0] if resp.data else {}
+    cal_event_id = reminder.get("calendar_event_id")
+    title = updates.get("title", reminder.get("title", ""))
+    due_at = updates.get("due_at", reminder.get("due_at", ""))
+
+    new_cal_id = await sync_reminder_to_calendar(
+        reminder_id=reminder_id,
+        title=title,
+        due_at_iso=due_at,
+        calendar_event_id=cal_event_id,
+        settings=settings,
+    )
+    if new_cal_id and new_cal_id != cal_event_id:
+        try:
+            await (
+                db.table("reminders")
+                .update({"calendar_event_id": new_cal_id})
+                .eq("id", reminder_id)
+                .execute()
+            )
+        except Exception as exc:
+            logger.warning("reminders/update: failed to save calendar_event_id: %s", exc)
+
+    return {"status": "updated", "id": reminder_id, "calendar_synced": new_cal_id is not None}
 
 
 @router.delete("/reminders/{reminder_id}")
@@ -143,10 +190,26 @@ async def delete_reminder(
     reminder_id: str,
     user_id: str,
     db=Depends(get_async_supabase),
+    settings: Settings = Depends(get_settings),
 ) -> dict:
-    """Delete a reminder permanently."""
+    """Delete a reminder and its Google Calendar event."""
+    # Fetch calendar_event_id before deleting
     try:
-        resp = await (
+        fetch = await (
+            db.table("reminders")
+            .select("calendar_event_id")
+            .eq("id", reminder_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    cal_event_id = fetch.data.get("calendar_event_id") if fetch.data else None
+
+    try:
+        await (
             db.table("reminders")
             .delete()
             .eq("id", reminder_id)
@@ -157,7 +220,51 @@ async def delete_reminder(
         logger.error("reminders/delete: failed: %s", exc)
         raise HTTPException(status_code=500, detail="Database error")
 
-    if not resp.data:
-        raise HTTPException(status_code=404, detail="Reminder not found")
+    # Delete calendar event
+    if cal_event_id:
+        await delete_calendar_event(cal_event_id, settings)
 
     return {"status": "deleted", "id": reminder_id}
+
+
+@router.post("/reminders/sync-all")
+async def sync_all_reminders(
+    user_id: str,
+    db=Depends(get_async_supabase),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Bulk sync all pending (not done) reminders to Google Calendar."""
+    try:
+        resp = await (
+            db.table("reminders")
+            .select("id, title, due_at, calendar_event_id")
+            .eq("user_id", user_id)
+            .eq("is_done", False)
+            .execute()
+        )
+    except Exception as exc:
+        logger.error("reminders/sync-all: query failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Database error")
+
+    synced = 0
+    for r in (resp.data or []):
+        cal_id = await sync_reminder_to_calendar(
+            reminder_id=r["id"],
+            title=r["title"],
+            due_at_iso=str(r["due_at"]),
+            calendar_event_id=r.get("calendar_event_id"),
+            settings=settings,
+        )
+        if cal_id and cal_id != r.get("calendar_event_id"):
+            try:
+                await (
+                    db.table("reminders")
+                    .update({"calendar_event_id": cal_id})
+                    .eq("id", r["id"])
+                    .execute()
+                )
+            except Exception:
+                pass
+            synced += 1
+
+    return {"synced": synced, "total": len(resp.data or [])}

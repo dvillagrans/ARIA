@@ -73,6 +73,7 @@ export default function ProjectsPage() {
         .select("id, name, color, is_active")
         .eq("user_id", user.id)
         .eq("is_active", true)
+        .neq("name", "Personal")
         .order("name", { ascending: true });
 
       setProjects((data as Project[]) ?? []);

@@ -2,19 +2,17 @@
  * POST /api/chat — server-side route handler.
  *
  * ADR-05: Reads user_id from the Supabase session server-side.
- * The browser never sends user_id — this handler injects it before
- * forwarding to FastAPI. Phase 1: trusts user_id as-is (no JWT verify
- * on the FastAPI side).
+ * Accepts the useChat wire format: { messages: [...], project_id? }
+ * Calls FastAPI and streams the confirmation_text back word-by-word.
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
 
 const FASTAPI_BASE_URL =
   process.env.FASTAPI_BASE_URL ?? "http://localhost:8000";
 
 export async function POST(req: Request): Promise<Response> {
-  // 1. Authenticate the caller via Supabase session (server-side).
+  // 1. Authenticate via Supabase session.
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,57 +20,83 @@ export async function POST(req: Request): Promise<Response> {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return new Response("Unauthorized", { status: 401 });
   }
 
-  // 2. Parse the request body (browser sends { message } or { message, project_id }).
-  let body: { message: string; project_id?: string };
+  // 2. Parse useChat body: { messages: CoreMessage[], project_id? }
+  let body: {
+    messages?: Array<{ role: string; content: string }>;
+    project_id?: string;
+  };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return new Response("Invalid JSON body", { status: 400 });
   }
 
-  if (!body.message || typeof body.message !== "string") {
-    return NextResponse.json(
-      { error: "message field is required" },
-      { status: 400 }
-    );
+  const lastUserMessage = [...(body.messages ?? [])]
+    .reverse()
+    .find((m) => m.role === "user");
+
+  if (!lastUserMessage?.content) {
+    return new Response("No user message found", { status: 400 });
   }
 
-  // 3. Forward to FastAPI with user_id injected server-side.
+  // 3. Forward to FastAPI.
   let fastapiResponse: Response;
   try {
     fastapiResponse = await fetch(`${FASTAPI_BASE_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: body.message,
+        message: lastUserMessage.content,
         user_id: user.id,
         project_id: body.project_id ?? null,
       }),
     });
   } catch (err) {
     console.error("[api/chat] FastAPI unreachable:", err);
-    return NextResponse.json(
-      { error: "Backend unavailable" },
-      { status: 503 }
-    );
+    return new Response("Backend unavailable", { status: 503 });
   }
 
-  // 4. Return FastAPI ChatResponse as-is.
+  // 4. Parse FastAPI JSON response.
   let data: unknown;
   try {
     data = await fastapiResponse.json();
   } catch {
-    console.error(
-      "[api/chat] FastAPI returned non-JSON body, status:",
-      fastapiResponse.status
-    );
-    return NextResponse.json(
-      { error: "Backend error" },
-      { status: fastapiResponse.status }
-    );
+    console.error("[api/chat] FastAPI non-JSON, status:", fastapiResponse.status);
+    return new Response("Backend error", { status: fastapiResponse.status });
   }
-  return NextResponse.json(data, { status: fastapiResponse.status });
+
+  if (!fastapiResponse.ok) {
+    const detail =
+      (data as Record<string, unknown>)?.detail ?? "Backend error";
+    return new Response(String(detail), { status: fastapiResponse.status });
+  }
+
+  const text =
+    ((data as Record<string, unknown>)?.confirmation_text as string) ?? "Done.";
+
+  // 5. Stream word-by-word so the client sees a typing effect.
+  //    FastAPI already computed the full response; streaming here is cosmetic
+  //    but meaningfully improves perceived UX.
+  const encoder = new TextEncoder();
+  const tokens = text.split(/(\s+)/); // preserves whitespace between words
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (const token of tokens) {
+        controller.enqueue(encoder.encode(token));
+        // Only delay on non-whitespace tokens (words).
+        if (token.trim()) {
+          await new Promise((r) => setTimeout(r, 18));
+        }
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }

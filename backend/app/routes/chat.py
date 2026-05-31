@@ -31,6 +31,7 @@ from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.classifier import CaptureIntent, ContextNoteIntent, ConversationIntent, CorrectionIntent, QueryIntent
 from app.services import (
     briefing_service,
+    calendar_sync,
     classifier_service,
     context_note_service,
     conversation_service,
@@ -173,6 +174,26 @@ async def _chat_impl(
             await briefing_service.invalidate(request.user_id, db)
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat: briefing invalidate failed (non-fatal): %s", exc)
+
+        # Sync reminders to Google Calendar.
+        if intent_obj.record_type == "reminder" and intent_obj.due_at:
+            try:
+                cal_id = await calendar_sync.sync_reminder_to_calendar(
+                    reminder_id=str(record_id),
+                    title=record_title,
+                    due_at_iso=intent_obj.due_at,
+                    calendar_event_id=None,
+                    settings=settings,
+                )
+                if cal_id:
+                    await (
+                        db.table("reminders")
+                        .update({"calendar_event_id": cal_id})
+                        .eq("id", str(record_id))
+                        .execute()
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("chat: calendar sync failed (non-fatal): %s", exc)
 
         # Generate short confirmation.
         try:
