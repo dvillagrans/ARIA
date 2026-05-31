@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { Bell, Pencil, Trash2, Check, X, CalendarSync, Calendar } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
 import EmptyState from "@/components/ui/EmptyState";
@@ -52,6 +53,35 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
       });
     }
   );
+
+  // Polling fallback — fetch fresh reminders every 10s in case Realtime is delayed
+  useEffect(() => {
+    const supabase = createClient();
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("reminders")
+        .select("id, title, due_at, is_done, amount, currency, calendar_event_id")
+        .eq("user_id", userId)
+        .eq("is_done", false)
+        .order("due_at", { ascending: true })
+        .limit(20);
+      if (data) {
+        setReminders((prev) => {
+          const ids = new Set(data.map((r) => r.id));
+          // Merge: keep local items not in DB (optimistic), add new from DB
+          const merged = [
+            ...prev.filter((r) => !ids.has(r.id)),
+            ...data,
+          ].filter((r) => !r.is_done);
+          return merged.sort(
+            (a, b) =>
+              new Date(a.due_at).getTime() - new Date(b.due_at).getTime()
+          );
+        });
+      }
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   function startEdit(reminder: Reminder) {
     setEditingId(reminder.id);
