@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
 import { motion } from "framer-motion";
 import { Bot, WifiOff, Loader2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -26,16 +25,12 @@ function localId() {
 export default function ChatView({ projectId, projectName, projectColor }: ChatViewProps) {
   const isProjectChat = !!projectId;
 
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [briefing, setBriefing] = useState<DisplayMessage | null>(null);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-
-  const { messages, input, setInput, append, isLoading, setMessages } = useChat({
-    api: "/api/chat",
-    body: isProjectChat ? { project_id: projectId } : {},
-    streamProtocol: "text",
-    onError: (err) => setChatError(err.message ?? "Something went wrong."),
-  });
 
   const { isOnline, isSyncing, pendingCount, enqueueMessage, drainQueue } =
     useOfflineQueue();
@@ -72,11 +67,9 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
             id: r.id,
             role: r.role as "user" | "assistant",
             content: r.content,
-            createdAt: r.created_at ? new Date(r.created_at) : undefined,
           }))
         );
 
-        // Briefing: general chat only.
         if (!isProjectChat) {
           const today = new Date().toISOString().split("T")[0];
           const first = data[0];
@@ -108,7 +101,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
 
     load();
     return () => { cancelled = true; };
-  }, [isProjectChat, projectId, setMessages]);
+  }, [isProjectChat, projectId]);
 
   // ── Offline queue drain ───────────────────────────────────────────────
   const handleQueued = useCallback(
@@ -118,7 +111,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
         { id: localId(), role: "assistant" as const, content: data.confirmation_text ?? "Done." },
       ]);
     },
-    [setMessages]
+    []
   );
 
   const pendingRef = useRef(pendingCount);
@@ -130,10 +123,11 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
-  // ── Submit ────────────────────────────────────────────────────────────
+  // ── Submit with streaming ─────────────────────────────────────────────
   async function onSubmit() {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
+
     setInput("");
     setChatError(null);
 
@@ -146,17 +140,56 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
       return;
     }
 
-    await append({ role: "user", content: trimmed });
+    const optimisticId = localId();
+    setMessages((prev) => [...prev, { id: optimisticId, role: "user", content: trimmed }]);
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: trimmed }],
+          ...(isProjectChat && { project_id: projectId }),
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        setChatError("Something went wrong. Please try again.");
+        return;
+      }
+
+      // Stream the response word-by-word into the assistant message.
+      const assistantId = localId();
+      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: m.content + chunk } : m
+          )
+        );
+      }
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+      setChatError("Network error. Please check your connection.");
+      console.error("[chat] fetch error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────
   const displayMessages: DisplayMessage[] = [
     ...(briefing ? [briefing] : []),
-    ...messages.map((m) => ({
-      id: m.id,
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    })),
+    ...messages,
   ];
 
   return (
@@ -225,7 +258,7 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
       <div className="flex flex-1 flex-col overflow-hidden">
         <MessageList
           messages={displayMessages}
-          isLoading={!historyLoaded || isLoading}
+          isLoading={!historyLoaded || (isLoading && messages.length > 0)}
         />
       </div>
 

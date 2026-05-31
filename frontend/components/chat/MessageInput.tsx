@@ -12,7 +12,7 @@ interface MessageInputProps {
 }
 
 export default function MessageInput({
-  value,
+  value = "",
   onChange,
   onSubmit,
   disabled = false,

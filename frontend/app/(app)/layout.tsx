@@ -43,7 +43,7 @@ export default async function AppLayout({
       .limit(20),
     supabase
       .from("reminders")
-      .select("id, title, due_at, is_done, amount, currency")
+      .select("id, title, due_at, is_done, amount, currency, calendar_event_id")
       .eq("user_id", user.id)
       .eq("is_done", false)
       .order("due_at", { ascending: true })

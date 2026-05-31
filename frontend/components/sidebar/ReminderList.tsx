@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Pencil, Trash2, Check, X, CalendarSync } from "lucide-react";
+import { Bell, Pencil, Trash2, Check, X, CalendarSync, Calendar } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -190,9 +190,14 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
               </div>
             ) : (
               <>
-                <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors">
-                  {reminder.title}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm text-text-secondary truncate group-hover:text-text-primary transition-colors flex-1">
+                    {reminder.title}
+                  </p>
+                  {reminder.calendar_event_id && (
+                    <Calendar className="h-3 w-3 text-accent shrink-0" title="Synced to Google Calendar" />
+                  )}
+                </div>
                 <div className="flex items-center justify-between mt-0.5">
                   <p className="text-[10px] text-text-muted">
                     {new Date(reminder.due_at).toLocaleString(undefined, {
