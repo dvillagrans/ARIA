@@ -43,14 +43,15 @@ interface GitHubReadmeRaw {
 }
 
 async function safeFetch<T>(url: string, headers: HeadersInit): Promise<T | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
   try {
-    const res = await fetch(url, {
-      headers,
-      next: { revalidate: 300 }, // cache 5 min server-side
-    });
+    const res = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timer);
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
+    clearTimeout(timer);
     return null;
   }
 }
@@ -143,5 +144,8 @@ export async function GET(req: Request): Promise<Response> {
     readme = decoded.slice(0, 3000).trim();
   }
 
-  return NextResponse.json({ repo: repoData, issues, prs, readme });
+  return NextResponse.json(
+    { repo: repoData, issues, prs, readme },
+    { headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=60" } }
+  );
 }
