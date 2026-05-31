@@ -1,28 +1,10 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import ChatView from "@/components/chat/ChatView";
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
-
-export default async function ProjectChatPage({ params }: Props) {
+// The [id] layout fetches the project, validates existence, and renders the
+// header + tabs — so this page only needs the id and hides ChatView's header.
+export default async function ProjectChatPage({
+  params,
+}: PageProps<"/projects/[id]/chat">) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, name, color")
-    .eq("id", id)
-    .single();
-
-  if (!project) redirect("/projects");
-
-  return (
-    <ChatView
-      projectId={project.id}
-      projectName={project.name}
-      projectColor={project.color}
-    />
-  );
+  return <ChatView projectId={id} hideHeader />;
 }

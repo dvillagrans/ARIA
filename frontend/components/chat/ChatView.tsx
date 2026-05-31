@@ -15,6 +15,8 @@ export interface ChatViewProps {
   projectId?: string;
   projectName?: string;
   projectColor?: string;
+  /** Hide the built-in header when an outer layout already renders one. */
+  hideHeader?: boolean;
 }
 
 let _localCounter = 0;
@@ -22,7 +24,7 @@ function localId() {
   return `local-${++_localCounter}-${Date.now()}`;
 }
 
-export default function ChatView({ projectId, projectName, projectColor }: ChatViewProps) {
+export default function ChatView({ projectId, projectName, projectColor, hideHeader }: ChatViewProps) {
   const isProjectChat = !!projectId;
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -197,30 +199,32 @@ export default function ChatView({ projectId, projectName, projectColor }: ChatV
   return (
     <main className="flex flex-col flex-1 min-h-0 bg-bg-root text-text-primary">
       {/* Header */}
-      <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
-        {isProjectChat ? (
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${projectColor}25` }}
-          >
-            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: projectColor }} />
-          </div>
-        ) : (
-          <img src="/logo.svg" alt="ARIA" className="w-7 h-7 rounded-lg shrink-0" />
-        )}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-sm font-semibold truncate">
-            {isProjectChat ? projectName : "ARIA"}
-          </h1>
+      {!hideHeader && (
+        <header className="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-bg-elevated bg-bg-surface/50 backdrop-blur-sm">
           {isProjectChat ? (
-            <p className="text-[11px] text-text-muted">Project chat</p>
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${projectColor}25` }}
+            >
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: projectColor }} />
+            </div>
           ) : (
-            !isOnline && (
-              <p className="text-[11px]" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
-            )
+            <img src="/logo.svg" alt="ARIA" className="w-7 h-7 rounded-lg shrink-0" />
           )}
-        </div>
-      </header>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold truncate">
+              {isProjectChat ? projectName : "ARIA"}
+            </h1>
+            {isProjectChat ? (
+              <p className="text-[11px] text-text-muted">Project chat</p>
+            ) : (
+              !isOnline && (
+                <p className="text-[11px]" style={{ color: "var(--color-status-warning-fg)" }}>Offline</p>
+              )
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Offline banner */}
       {!isOnline && !isProjectChat && (
