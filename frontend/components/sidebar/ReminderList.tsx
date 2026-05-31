@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, Pencil, Trash2, Check, X, CalendarSync, Calendar } from "lucide-react";
+import { Pencil, Trash2, Check, X, CalendarSync, Calendar } from "lucide-react";
 import { useRealtime } from "@/lib/hooks/use-realtime";
-import EmptyState from "@/components/ui/EmptyState";
 
 export interface Reminder {
   id: string;
@@ -155,11 +154,9 @@ export default function ReminderList({ userId, initialReminders = [] }: Reminder
 
   if (reminders.length === 0) {
     return (
-      <EmptyState
-        icon={Bell}
-        title="No pending reminders"
-        description="Reminders you create will show up here."
-      />
+      <div className="px-4 py-2">
+        <p className="text-xs text-text-muted">No pending reminders</p>
+      </div>
     );
   }
 

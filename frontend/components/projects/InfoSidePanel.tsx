@@ -333,16 +333,16 @@ export default function InfoSidePanel({
       {/* Sections */}
       <div className="flex flex-col divide-y divide-[#27272A]">
 
-        {/* Overview */}
-        <Section id="overview" label="Overview" icon={FileText} collapsed={sectionCollapse.overview} onToggle={toggleSection}>
-          <div className="space-y-1.5 pt-0.5">
+        {/* Overview — only show if has content */}
+        {(projectContext || !loading) && (
+          <Section id="overview" label="Overview" icon={FileText} collapsed={projectContext ? sectionCollapse.overview : true} onToggle={toggleSection}>
             {projectContext ? (
-              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{projectContext}</p>
+              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap pt-0.5">{projectContext}</p>
             ) : (
-              <p className="text-xs text-text-muted italic">No description yet. Add one in the Info tab.</p>
+              <p className="text-xs text-text-muted italic pt-0.5">No description yet. Add one in the Info tab.</p>
             )}
-          </div>
-        </Section>
+          </Section>
+        )}
 
         {/* Tasks */}
         <Section
@@ -359,14 +359,7 @@ export default function InfoSidePanel({
           ) : !taskStats || taskStats.total === 0 ? (
             <p className="text-xs text-text-muted pt-0.5">No tasks for this project.</p>
           ) : (
-            <div className="pt-0.5 space-y-2">
-              <div className="flex flex-wrap gap-1">
-                {Object.entries(taskStats.byStatus).map(([status, count]) => (
-                  <span key={status} className={`px-1.5 py-0.5 text-[10px] rounded-sm border ${statusBadgeClass(status)}`}>
-                    {status} · {count}
-                  </span>
-                ))}
-              </div>
+            <div className="pt-0.5">
               <div className="border border-border-subtle rounded-sm overflow-hidden">
                 {taskStats.all.map((task, i) => {
                   const isDone = task.status === "done" || task.status === "completed";
@@ -401,8 +394,8 @@ export default function InfoSidePanel({
           )}
         </Section>
 
-        {/* Notes */}
-        <Section id="notes" label="Notes" icon={FileText} collapsed={sectionCollapse.notes} onToggle={toggleSection}>
+        {/* Notes — auto-collapse when empty */}
+        <Section id="notes" label="Notes" icon={FileText} collapsed={notes.length === 0 ? true : sectionCollapse.notes} onToggle={toggleSection}>
           {loading ? (
             <div className="space-y-1.5 pt-0.5">
               {[0, 1, 2].map((i) => <div key={i} className="animate-pulse bg-bg-elevated h-3 rounded-sm" />)}
@@ -431,12 +424,12 @@ export default function InfoSidePanel({
           )}
         </Section>
 
-        {/* Repository */}
+        {/* Repository — auto-collapse when no repo */}
         <Section
           id="repository"
           label="Repository"
           icon={GitBranch}
-          collapsed={sectionCollapse.repository}
+          collapsed={projectGithubRepo ? sectionCollapse.repository : true}
           onToggle={toggleSection}
           noPadding={!!projectGithubRepo}
         >
@@ -449,12 +442,12 @@ export default function InfoSidePanel({
           )}
         </Section>
 
-        {/* Activity */}
+        {/* Activity — auto-collapse when empty */}
         <Section
           id="activity"
           label="Activity"
           icon={Activity}
-          collapsed={sectionCollapse.activity}
+          collapsed={activity.length === 0 ? true : sectionCollapse.activity}
           onToggle={toggleSection}
           noPadding
         >
