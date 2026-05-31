@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [githubToken, setGithubToken] = useState("");
   const [githubSaveStatus, setGithubSaveStatus] = useState<GithubSaveStatus>("idle");
   const [githubError, setGithubError] = useState<string | null>(null);
+  const [githubEditing, setGithubEditing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
@@ -102,8 +103,13 @@ export default function ProfilePage() {
         setGithubSaveStatus("error");
         return;
       }
+      const connected = !!githubToken.trim();
       setGithubSaveStatus("saved");
-      setGithubStatus(githubToken.trim() ? "connected" : "disconnected");
+      setGithubStatus(connected ? "connected" : "disconnected");
+      if (connected) {
+        setGithubEditing(false);
+        setGithubToken("");
+      }
     } catch {
       setGithubError("Network error — token not saved.");
       setGithubSaveStatus("error");
@@ -160,26 +166,57 @@ export default function ProfilePage() {
 
             {/* GitHub integration */}
             <div className="bg-bg-surface rounded-sm border border-border-subtle p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <GitHubIcon className="h-4 w-4 text-text-muted shrink-0" />
-                <h2 className="text-sm font-medium text-text-primary">GitHub</h2>
-                {githubStatus === "connected" && (
-                  <span className="text-xs text-accent">Connected</span>
+              {/* Header row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <GitHubIcon className="h-4 w-4 text-text-muted shrink-0" />
+                  <h2 className="text-sm font-medium text-text-primary">GitHub</h2>
+                </div>
+                {githubStatus === "loading" && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-text-muted" />
+                )}
+                {githubStatus === "connected" && !githubEditing && (
+                  <span className="flex items-center gap-1.5 text-xs text-accent">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+                    Connected
+                  </span>
                 )}
               </div>
-              {githubStatus === "loading" ? (
-                <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
-              ) : (
+
+              {/* Connected view */}
+              {githubStatus === "connected" && !githubEditing && (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleSyncGithub}
+                      disabled={syncing}
+                      className="rounded-sm bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {syncing ? "Syncing…" : "Sync now"}
+                    </button>
+                    <button
+                      onClick={() => { setGithubEditing(true); setGithubSaveStatus("idle"); setGithubError(null); }}
+                      className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+                    >
+                      Update token
+                    </button>
+                  </div>
+                  {syncResult && (
+                    <p className="text-xs text-text-muted">{syncResult}</p>
+                  )}
+                </>
+              )}
+
+              {/* Input form — disconnected or editing */}
+              {(githubStatus === "disconnected" || githubEditing) && (
                 <>
                   <input
                     type="password"
                     value={githubToken}
-                    onChange={(e) => {
-                      setGithubToken(e.target.value);
-                      setGithubSaveStatus("idle");
-                    }}
+                    onChange={(e) => { setGithubToken(e.target.value); setGithubSaveStatus("idle"); }}
                     placeholder="ghp_…"
                     autoComplete="off"
+                    autoFocus={githubEditing}
                     className="w-full rounded-sm border border-border-subtle bg-bg-root px-2.5 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
                   />
                   {githubSaveStatus === "error" && githubError && (
@@ -193,20 +230,16 @@ export default function ProfilePage() {
                     >
                       {githubSaveStatus === "saving" ? "Saving…" : "Save token"}
                     </button>
-                    {githubStatus === "connected" && (
+                    {githubEditing && (
                       <button
-                        onClick={handleSyncGithub}
-                        disabled={syncing}
-                        className="rounded-sm border border-border-subtle px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => { setGithubEditing(false); setGithubToken(""); setGithubSaveStatus("idle"); setGithubError(null); }}
+                        className="text-xs text-text-muted hover:text-text-secondary transition-colors"
                       >
-                        {syncing ? "Syncing…" : "Sync now"}
+                        Cancel
                       </button>
                     )}
                     {githubSaveStatus === "saved" && (
                       <span className="text-xs text-accent">Saved</span>
-                    )}
-                    {syncResult && (
-                      <span className="text-xs text-text-muted">{syncResult}</span>
                     )}
                   </div>
                 </>
