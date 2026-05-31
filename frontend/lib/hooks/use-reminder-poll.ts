@@ -29,7 +29,11 @@ export function useReminderPoll() {
       const newReminders = data.filter((r) => !shownIdsRef.current.has(r.id));
       if (newReminders.length > 0) {
         newReminders.forEach((r) => shownIdsRef.current.add(r.id));
-        setDueReminders((prev) => [...prev, ...newReminders]);
+        setDueReminders((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const trulyNew = newReminders.filter((r) => !existingIds.has(r.id));
+          return [...prev, ...trulyNew];
+        });
       }
     } catch {
       // Silent — polling errors shouldn't disrupt the user
@@ -37,20 +41,27 @@ export function useReminderPoll() {
   }, []);
 
   const acknowledge = useCallback(async (reminderId: string) => {
+    // Remove from UI immediately (optimistic)
+    setDueReminders((prev) => prev.filter((r) => r.id !== reminderId));
+    shownIdsRef.current.delete(reminderId);
+
     try {
-      await fetch("/api/reminders/acknowledge", {
+      const res = await fetch("/api/reminders/acknowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reminder_id: reminderId }),
       });
-    } catch {
-      // Silent
+      if (!res.ok) {
+        console.error("[reminder-poll] acknowledge failed:", res.status);
+      }
+    } catch (err) {
+      console.error("[reminder-poll] acknowledge error:", err);
     }
-    setDueReminders((prev) => prev.filter((r) => r.id !== reminderId));
   }, []);
 
   const dismiss = useCallback((reminderId: string) => {
     setDueReminders((prev) => prev.filter((r) => r.id !== reminderId));
+    shownIdsRef.current.delete(reminderId);
   }, []);
 
   useEffect(() => {
