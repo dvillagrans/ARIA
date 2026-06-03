@@ -15,6 +15,11 @@ from app.services.study_service import (
     _build_explain_prompt,
     _build_flashcards_prompt,
     _truncate_sources,
+    extract_urls,
+    recover_urls_from_history,
+    recover_urls_from_metadata,
+    build_conversation_context,
+    resolve_source,
 )
 
 
@@ -55,6 +60,48 @@ def test_truncate_sources_includes_all_sources_for_study_plan():
     for i in range(8):
         assert f"https://example.com/{i}" in truncated
     assert truncated.count("--- Source:") == 8
+
+
+def test_extract_urls_from_text():
+    text = "Ver https://arxiv.org/pdf/123 y https://youtube.com/watch?v=abc"
+    assert len(extract_urls(text)) == 2
+
+
+def test_recover_urls_from_metadata():
+    history = [
+        {"role": "user", "content": "hola"},
+        {
+            "role": "assistant",
+            "content": "plan...",
+            "metadata": {"intent": "study", "source_urls": ["https://example.com/a.pdf"]},
+        },
+    ]
+    assert recover_urls_from_metadata(history) == ["https://example.com/a.pdf"]
+
+
+def test_build_conversation_context_includes_roles():
+    history = [
+        {"role": "user", "content": "Ayudame a estudiar NLP"},
+        {"role": "assistant", "content": "## Plan de estudio"},
+    ]
+    ctx = build_conversation_context(history)
+    assert "Estudiante:" in ctx
+    assert "ARIA:" in ctx
+    assert "NLP" in ctx
+
+
+@pytest.mark.asyncio
+async def test_resolve_source_uses_conversation_when_no_urls():
+    async def fetch(_url: str) -> str:
+        return "should not be called"
+
+    history = [
+        {"role": "user", "content": "material previo"},
+        {"role": "assistant", "content": "plan previo", "metadata": {"intent": "study"}},
+    ]
+    text, urls = await resolve_source(None, [], history, fetch)
+    assert "material previo" in text
+    assert urls == []
 
 
 def test_build_quiz_prompt_contains_source():

@@ -57,7 +57,7 @@ async def get_history(
     """
     query = (
         db.table("conversations")
-        .select("role, content")
+        .select("role, content, metadata")
         .eq("user_id", str(user_id))
         .order("created_at", desc=False)
         .limit(limit)

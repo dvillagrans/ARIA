@@ -59,10 +59,25 @@ _STUDY_PLAN_TRIGGERS = (
 
 
 def _resolve_study_mode(mode: str, user_message: str, source_urls: list[str]) -> str:
-    """Prefer study_plan for open-ended study requests (classifier often defaults to summarize)."""
+    """Infer the best study mode from explicit follow-up phrasing."""
+    lower = user_message.lower()
+    if any(k in lower for k in ("pregunta", "quiz", "examin", " a ver", "prueba", "test me")):
+        return "quiz"
+    if any(
+        k in lower
+        for k in (
+            "plan de estudio",
+            "dame el plan",
+            "vuelve a darme",
+            "se cort",
+            "cortó",
+            "mensaje completo",
+            "otra vez el plan",
+        )
+    ):
+        return "study_plan"
     if mode != "summarize":
         return mode
-    lower = user_message.lower()
     if any(trigger in lower for trigger in _STUDY_PLAN_TRIGGERS) or len(source_urls) >= 3:
         return "study_plan"
     return mode
@@ -448,10 +463,22 @@ async def _chat_impl(
 
     # --- CONVERSATION intent — casual/trivial, no record, no vectorize ---
     elif isinstance(intent_obj, ConversationIntent):
+        # If the user is continuing a study session, answer with study context.
+        recent_study = any(
+            (t.get("metadata") or {}).get("intent") == "study"
+            for t in history[-6:]
+            if t.get("role") == "assistant"
+        )
+        study_hint = (
+            " El usuario está en una sesión de estudio en curso; responde como tutor "
+            "y ofrece ayuda concreta (quiz, explicar un tema, regenerar plan) usando el historial."
+            if recent_study
+            else ""
+        )
         try:
             reply_text = await llm.reason(
                 "The user sent a casual message. Respond briefly and naturally "
-                f"in the same language. User message: {request.message}",
+                f"in the same language.{study_hint} User message: {request.message}",
                 history=history,
             )
         except Exception as exc:  # noqa: BLE001
@@ -534,30 +561,22 @@ async def _chat_impl(
 
     # --- STUDY intent — structured study assistance ---
     elif isinstance(intent_obj, StudyIntent):
-        source_text = intent_obj.source_text or ""
-
-        # If source_urls provided, download and extract text from each.
-        if intent_obj.source_urls and not source_text:
-            extracted_parts = []
-            for url in intent_obj.source_urls:
-                try:
-                    text = await pdf_service.download_and_extract(url)
-                    if text:
-                        extracted_parts.append(f"--- Source: {url} ---\n{text}")
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("chat: pdf_service.download_and_extract() failed for %s: %s", url, exc)
-
-            if extracted_parts:
-                source_text = "\n\n".join(extracted_parts)
+        source_text, resolved_urls = await study_service.resolve_source(
+            intent_obj.source_text,
+            intent_obj.source_urls,
+            history,
+            pdf_service.download_and_extract,
+        )
 
         effective_mode = _resolve_study_mode(
-            intent_obj.mode, request.message, intent_obj.source_urls
+            intent_obj.mode, request.message, resolved_urls or intent_obj.source_urls
         )
 
         if not source_text:
             answer_text = (
-                "Necesito contenido para estudiar. "
-                "Por favor comparte texto o URLs de PDFs/recursos."
+                "No tengo contexto de estudio todavía. "
+                "Comparte el material o los links una vez, y luego podré hacerte preguntas, "
+                "explicarte temas o regenerar el plan sin que repitas todo."
             )
         else:
             try:
@@ -570,12 +589,12 @@ async def _chat_impl(
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("chat: study_service.generate() failed: %s", exc)
-                answer_text = f"Study mode '{effective_mode}' encountered an error."
+                answer_text = f"El modo de estudio '{effective_mode}' encontró un error."
 
         metadata = {
             "intent": "study",
             "mode": effective_mode,
-            "source_urls": intent_obj.source_urls,
+            "source_urls": resolved_urls or intent_obj.source_urls,
             "classifier_raw": intent_obj.classifier_raw,
         }
 

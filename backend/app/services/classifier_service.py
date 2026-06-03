@@ -105,6 +105,11 @@ Return a JSON object with one of these intent values:
    - "flashcards": user asks for flashcards or tarjetas
    Default to "study_plan" (NOT "summarize") when the user wants to learn/study but does not specify a format.
    
+   FOLLOW-UP RULES (no URLs in current message):
+   - "hazme preguntas", "quiz", "a ver si domino" → mode "quiz" (context comes from prior turns)
+   - "vuelve a darme el plan", "se cortó el mensaje" → mode "study_plan"
+   - Leave source_text and source_urls empty; the system recovers context from conversation history
+   
    CRITICAL RULES:
    - Extract ALL URLs from the user's message and put them in source_urls as a list.
    - source_text should ONLY contain the actual text content to study, NOT the user's request or message.

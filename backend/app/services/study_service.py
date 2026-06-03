@@ -17,9 +17,93 @@ from app.providers.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
+_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+_TRAILING_URL_PUNCT = re.compile(r"[.,;:!?)\\]]+$")
+
+
+def extract_urls(text: str) -> list[str]:
+    """Extract unique HTTP(S) URLs from text, preserving order."""
+    urls: list[str] = []
+    for match in _URL_RE.findall(text):
+        cleaned = _TRAILING_URL_PUNCT.sub("", match)
+        if cleaned:
+            urls.append(cleaned)
+    return list(dict.fromkeys(urls))
+
+
 _DEFAULT_MAX_TOTAL = 72_000
 _STUDY_PLAN_MAX_TOTAL = 64_000
 _MIN_PER_SOURCE = 400
+
+
+def recover_urls_from_history(history: list[dict]) -> list[str]:
+    """Collect URLs from prior user messages in the conversation."""
+    urls: list[str] = []
+    for turn in history:
+        if turn.get("role") == "user":
+            urls.extend(extract_urls(turn.get("content", "")))
+    return list(dict.fromkeys(urls))
+
+
+def recover_urls_from_metadata(history: list[dict]) -> list[str]:
+    """Reuse source_urls saved on the most recent study assistant turn."""
+    for turn in reversed(history):
+        if turn.get("role") != "assistant":
+            continue
+        meta = turn.get("metadata") or {}
+        if meta.get("intent") == "study" and meta.get("source_urls"):
+            return list(meta["source_urls"])
+    return []
+
+
+def build_conversation_context(history: list[dict], max_turns: int = 10) -> str:
+    """Format recent turns as study context for follow-up requests."""
+    lines: list[str] = []
+    for turn in history[-max_turns:]:
+        role = "Estudiante" if turn.get("role") == "user" else "ARIA"
+        content = (turn.get("content") or "").strip()
+        if content:
+            lines.append(f"{role}: {content}")
+    return "\n\n".join(lines)
+
+
+async def resolve_source(
+    source_text: str | None,
+    source_urls: list[str],
+    history: list[dict],
+    fetch_url_text,
+) -> tuple[str, list[str]]:
+    """
+    Resolve study material from the current message or prior conversation context.
+
+    Follow-up messages ("hazme preguntas", "vuelve a darme el plan") often omit
+    URLs; this recovers them from history metadata or earlier user turns.
+    """
+    text = (source_text or "").strip()
+    urls = list(source_urls or [])
+
+    if not urls:
+        urls = recover_urls_from_metadata(history) or recover_urls_from_history(history)
+
+    if urls and not text:
+        extracted_parts: list[str] = []
+        for url in urls:
+            try:
+                content = await fetch_url_text(url)
+                if content:
+                    extracted_parts.append(f"--- Source: {url} ---\n{content}")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("study_service: fetch failed for %s: %s", url, exc)
+        if extracted_parts:
+            text = "\n\n".join(extracted_parts)
+
+    if not text and history:
+        transcript = build_conversation_context(history)
+        if transcript:
+            text = f"--- Contexto de la conversación previa ---\n{transcript}"
+            logger.info("study_service: using conversation context (%d turns)", len(history))
+
+    return text, urls
 
 
 def _parse_source_blocks(source_text: str) -> list[tuple[str, str]]:
@@ -153,6 +237,8 @@ def _build_study_plan_prompt(source_text: str, user_message: str = "") -> str:
         "- Qué estudiar primero antes de la próxima sesión\n"
         "- Invita al estudiante a pedir quiz, flashcards o profundizar en un tema\n\n"
         "Reglas:\n"
+        "- Si el estudiante pide repetir o completar el plan ('vuelve a darme el plan', 'se cortó'), "
+        "regenera el plan COMPLETO con todas las secciones, no un resumen breve.\n"
         "- Si un recurso es solo un enlace (YouTube, Drive) con poco texto extraído, "
         "indica que debe abrirlo y qué buscar en él.\n"
         "- Prioriza comprensión de conceptos sobre citar papers.\n\n"
@@ -173,13 +259,19 @@ def _build_summarize_prompt(source_text: str, user_message: str = "") -> str:
 
 def _build_quiz_prompt(source_text: str, user_message: str = "") -> str:
     """Build a prompt for quiz mode."""
+    count_hint = (
+        "Si el estudiante pide pocas preguntas (ej. 'un par', 'algunas'), crea 2-3 preguntas. "
+        "Si menciona un tema concreto (ej. NLP), enfócate solo en ese tema.\n"
+    )
     return (
         f"{_language_instruction(user_message)}"
-        "Basándote en el siguiente contenido, crea 5 preguntas de quiz con respuestas. "
+        f"{count_hint}"
+        "Basándote en el contenido o contexto previo, crea preguntas de quiz con respuestas. "
         "Formato:\n"
         "P1: [pregunta]\nR1: [respuesta]\n\n"
         "Mezcla tipos: recuerdo, comprensión y aplicación.\n\n"
-        f"Contenido:\n{source_text}"
+        f"Solicitud actual del estudiante:\n{user_message}\n\n"
+        f"Contenido / contexto:\n{source_text}"
     )
 
 
