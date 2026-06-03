@@ -62,9 +62,9 @@ class WebSearchIntent(BaseModel):
 
 
 class StudyIntent(BaseModel):
-    """User wants structured study assistance (summarize, quiz, explain, flashcards)."""
+    """User wants structured study assistance (study_plan, summarize, quiz, explain, flashcards)."""
     intent: Literal["study"]
-    mode: Literal["summarize", "quiz", "explain", "flashcards"]
+    mode: Literal["study_plan", "summarize", "quiz", "explain", "flashcards"]
     source_text: str | None = None
     source_urls: list[str] = []
     classifier_raw: dict = {}

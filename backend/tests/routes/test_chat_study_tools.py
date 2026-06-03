@@ -60,8 +60,8 @@ def test_web_search_intent_custom_max_results():
 # ---------------------------------------------------------------------------
 
 def test_study_intent_valid_modes():
-    """StudyIntent accepts all four valid modes."""
-    for mode in ("summarize", "quiz", "explain", "flashcards"):
+    """StudyIntent accepts all five valid modes."""
+    for mode in ("study_plan", "summarize", "quiz", "explain", "flashcards"):
         intent = StudyIntent(intent="study", mode=mode)
         assert intent.mode == mode
 

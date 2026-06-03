@@ -48,6 +48,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+_STUDY_PLAN_TRIGGERS = (
+    "ayudame a estudiar",
+    "ayúdame a estudiar",
+    "help me study",
+    "necesito aprender",
+    "quiero aprender",
+    "estudiar esto",
+)
+
+
+def _resolve_study_mode(mode: str, user_message: str, source_urls: list[str]) -> str:
+    """Prefer study_plan for open-ended study requests (classifier often defaults to summarize)."""
+    if mode != "summarize":
+        return mode
+    lower = user_message.lower()
+    if any(trigger in lower for trigger in _STUDY_PLAN_TRIGGERS) or len(source_urls) >= 3:
+        return "study_plan"
+    return mode
+
 
 def _turns(
     request: ChatRequest,
@@ -531,26 +550,31 @@ async def _chat_impl(
             if extracted_parts:
                 source_text = "\n\n".join(extracted_parts)
 
+        effective_mode = _resolve_study_mode(
+            intent_obj.mode, request.message, intent_obj.source_urls
+        )
+
         if not source_text:
             answer_text = (
-                "I need source content to study from. "
-                "Please provide text or PDF URLs."
+                "Necesito contenido para estudiar. "
+                "Por favor comparte texto o URLs de PDFs/recursos."
             )
         else:
             try:
                 answer_text = await study_service.generate(
-                    mode=intent_obj.mode,
+                    mode=effective_mode,
                     source_text=source_text,
                     llm=llm,
                     history=history,
+                    user_message=request.message,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("chat: study_service.generate() failed: %s", exc)
-                answer_text = f"Study mode '{intent_obj.mode}' encountered an error."
+                answer_text = f"Study mode '{effective_mode}' encountered an error."
 
         metadata = {
             "intent": "study",
-            "mode": intent_obj.mode,
+            "mode": effective_mode,
             "source_urls": intent_obj.source_urls,
             "classifier_raw": intent_obj.classifier_raw,
         }

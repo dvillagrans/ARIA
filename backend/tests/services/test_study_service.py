@@ -9,10 +9,12 @@ from unittest.mock import AsyncMock
 
 from app.services.study_service import (
     generate,
+    _build_study_plan_prompt,
     _build_summarize_prompt,
     _build_quiz_prompt,
     _build_explain_prompt,
     _build_flashcards_prompt,
+    _truncate_sources,
 )
 
 
@@ -24,14 +26,42 @@ def test_build_summarize_prompt_contains_source():
     """Summarize prompt includes the source text."""
     prompt = _build_summarize_prompt("Machine learning is a subset of AI.")
     assert "Machine learning is a subset of AI." in prompt
-    assert "summarize" in prompt.lower() or "summary" in prompt.lower()
+    assert "resume" in prompt.lower() or "resumen" in prompt.lower()
+
+
+def test_build_study_plan_prompt_contains_structure():
+    """Study plan prompt requests structured tutor output."""
+    prompt = _build_study_plan_prompt("NLP content", user_message="Ayudame a estudiar esto")
+    assert "Plan de estudio" in prompt
+    assert "Ayudame a estudiar esto" in prompt
+    assert "NLP content" in prompt
+
+
+def test_truncate_sources_caps_total_size():
+    """Large multi-source input is truncated to fit context."""
+    block = "--- Source: https://example.com/a ---\n" + ("x" * 20_000)
+    truncated = _truncate_sources(block + "\n\n" + block)
+    assert len(truncated) <= 72_500
+
+
+def test_truncate_sources_includes_all_sources_for_study_plan():
+    """study_plan keeps every source with equal budget instead of dropping later ones."""
+    blocks = [
+        f"--- Source: https://example.com/{i} ---\n" + ("x" * 50_000)
+        for i in range(8)
+    ]
+    source = "\n\n".join(blocks)
+    truncated = _truncate_sources(source, mode="study_plan")
+    for i in range(8):
+        assert f"https://example.com/{i}" in truncated
+    assert truncated.count("--- Source:") == 8
 
 
 def test_build_quiz_prompt_contains_source():
     """Quiz prompt includes the source text and requests questions."""
     prompt = _build_quiz_prompt("Deep learning uses neural networks.")
     assert "Deep learning uses neural networks." in prompt
-    assert "Q1" in prompt or "question" in prompt.lower()
+    assert "P1" in prompt or "pregunta" in prompt.lower()
 
 
 def test_build_explain_prompt_contains_source():
@@ -55,6 +85,19 @@ def test_build_flashcards_prompt_contains_source():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
+async def test_generate_routes_to_study_plan():
+    """generate() calls llm.reason() with study plan prompt."""
+    mock_llm = AsyncMock()
+    mock_llm.reason.return_value = "## Plan de estudio\n..."
+
+    result = await generate("study_plan", "test content", mock_llm, user_message="Ayudame a estudiar")
+
+    assert "Plan de estudio" in result
+    call_args = mock_llm.reason.call_args
+    assert "Plan de estudio" in call_args[0][0]
+
+
+@pytest.mark.asyncio
 async def test_generate_routes_to_summarize():
     """generate() calls llm.reason() with summarize prompt."""
     mock_llm = AsyncMock()
@@ -65,7 +108,7 @@ async def test_generate_routes_to_summarize():
     assert result == "Here is a summary."
     mock_llm.reason.assert_called_once()
     call_args = mock_llm.reason.call_args
-    assert "summarize" in call_args[0][0].lower() or "summary" in call_args[0][0].lower()
+    assert "resume" in call_args[0][0].lower() or "resumen" in call_args[0][0].lower()
 
 
 @pytest.mark.asyncio
@@ -78,7 +121,7 @@ async def test_generate_routes_to_quiz():
 
     assert result == "Q1: What is AI?"
     call_args = mock_llm.reason.call_args
-    assert "question" in call_args[0][0].lower() or "Q1" in call_args[0][0]
+    assert "pregunta" in call_args[0][0].lower() or "P1" in call_args[0][0]
 
 
 @pytest.mark.asyncio

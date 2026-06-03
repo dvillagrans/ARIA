@@ -94,10 +94,16 @@ Return a JSON object with one of these intent values:
    IMPORTANT: Only classify as web_search when the user explicitly wants external/current information. General knowledge questions should be "query".
 
 7. "study" — the user wants structured study help on a topic, document, or list of resources.
-   Required fields: intent, mode ("summarize" | "quiz" | "explain" | "flashcards")
+   Required fields: intent, mode ("study_plan" | "summarize" | "quiz" | "explain" | "flashcards")
    Optional: source_text, source_urls (list of URLs)
    Triggers: "summarize this", "quiz me on", "explain like I'm 5", "make flashcards from", "study mode", "help me study", "ayudame a estudiar", "estudiar", "study this", "teach me about", "prep me for", "I need to learn", "quiero aprender", "necesito entender"
-   The mode should be inferred from the user's request language. Default to "summarize" if unclear.
+   Mode selection rules:
+   - "study_plan" (DEFAULT for general study requests): "ayudame a estudiar", "help me study", "necesito aprender", multiple topics, curriculum, list of resources/URLs, project prep
+   - "summarize": user explicitly asks for a summary/resumen only
+   - "quiz": user asks for questions, test, exam prep, "ponme un quiz"
+   - "explain": ELI5 / "explícame como si tuviera 5 años"
+   - "flashcards": user asks for flashcards or tarjetas
+   Default to "study_plan" (NOT "summarize") when the user wants to learn/study but does not specify a format.
    
    CRITICAL RULES:
    - Extract ALL URLs from the user's message and put them in source_urls as a list.

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import { SkeletonText } from "@/components/ui/Skeleton";
+import MarkdownMessage from "@/components/chat/MarkdownMessage";
 
 export interface Message {
   id: string;
@@ -100,12 +101,12 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
                   </p>
                 </div>
               ) : (
-                /* Assistant: plain text, no bubble */
+                /* Assistant: rendered markdown */
                 <div className="max-w-[90%] md:max-w-[80%]">
-                  <p className="text-[13px] text-text-primary leading-relaxed whitespace-pre-wrap break-words">
-                    {msg.content}
-                    {isStreaming && <span className="cursor-blink">█</span>}
-                  </p>
+                  <MarkdownMessage
+                    content={msg.content}
+                    isStreaming={isStreaming}
+                  />
                 </div>
               )}
 
