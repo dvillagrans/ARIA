@@ -2,9 +2,9 @@
 
 **Adaptive Reasoning & Intelligence Assistant**
 
-ARIA is a personal AI operating system built as a Progressive Web App. It captures tasks, notes, events, and reminders in natural language, reasons over all of them to surface what matters most, and connects to external tools via connectors.
+ARIA is a personal AI operating system built as a Progressive Web App. It captures tasks, notes, events, and reminders in natural language, reasons over your data with RAG, helps you study structured material, and connects to external tools via connectors.
 
-Unlike traditional task managers, ARIA doesn't require manual organization. The AI processes every input, decides where it belongs, and presents the right information at the right time.
+Unlike traditional task managers, ARIA does not require manual organization. The AI classifies every input, decides where it belongs, and surfaces what matters — including daily briefings and study guides when you need them.
 
 ---
 
@@ -12,12 +12,13 @@ Unlike traditional task managers, ARIA doesn't require manual organization. The 
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 + Tailwind CSS (PWA) |
+| Frontend | Next.js 16 + Tailwind CSS 4 + PWA (`@ducanh2912/next-pwa`) |
 | Backend | FastAPI (async Python) |
-| LLM | DeepSeek API — `deepseek-chat` (classifier) + `deepseek-reasoner` (RAG) |
-| Embeddings | Qwen3-Embedding-8B via OpenRouter — 4096 dims |
-| Database | Supabase (Postgres + pgvector + Realtime + Auth) |
-| Connectors | GitHub, Gmail, Google Calendar via HTTP → `/ingest` |
+| LLM | DeepSeek — `deepseek-chat` (classifier) + `deepseek-reasoner` (reasoning) |
+| Embeddings | Qwen3-Embedding-8B via OpenRouter — **4096 dims** |
+| Database | Supabase (Postgres + pgvector + Realtime + Auth + Storage) |
+| Web search | Tavily API (optional) + DuckDuckGo fallback |
+| Connectors | GitHub, Gmail, Google Calendar → `POST /ingest` |
 | Observability | Prometheus + Grafana |
 
 ---
@@ -32,22 +33,36 @@ User → Next.js (PWA) → FastAPI → Supabase
                         ↓
                    pgvector (semantic search)
                         ↓
-                   Connectors (GitHub / Gmail / Calendar)
+        Study tools · Web search · Connectors · Documents
 ```
+
+### Chat intent routing
+
+Every message is classified into one intent. The backend routes to the right service:
+
+| Intent | Example | Handler |
+|---|---|---|
+| `capture` | "recordar pagar colegiatura el viernes" | Classify → embed → write record |
+| `correction` | "eso era un evento, no una tarea" | Fix previous classification |
+| `context_note_update` | "bloqueado esperando respuesta de Alex" | Update task `context_note` |
+| `query` | "¿qué tareas vencen esta semana?" | RAG over pgvector |
+| `study` | "ayúdame a estudiar esto" + URLs | Study service (plan, quiz, …) |
+| `web_search` | "busca lo último sobre RAG agents" | Tavily / DuckDuckGo |
+| `conversation` | "gracias", "hola" | Short natural reply |
 
 ### Provider interfaces
 
-LLM and embedding providers are decoupled behind abstract interfaces. Swapping providers requires only a new implementation — no business logic changes.
+LLM and embedding providers are decoupled behind abstract interfaces. Swapping providers requires only a new implementation.
 
 ```
 LLMProvider (abstract)
 └── DeepSeekProvider
-    ├── classifier → deepseek-chat (fast, low cost)
-    └── reasoner  → deepseek-reasoner (full model)
+    ├── classify → deepseek-chat
+    └── reason   → deepseek-reasoner
 
 EmbeddingProvider (abstract)
 └── QwenEmbeddingProvider
-    └── Qwen3-Embedding-8B via OpenRouter · 4096 dims
+    └── Qwen3-Embedding-8B · 4096 dims
 ```
 
 ---
@@ -55,42 +70,70 @@ EmbeddingProvider (abstract)
 ## Features
 
 ### Phase 0 — Foundation ✅
-- Supabase schema with pgvector, FastAPI skeleton, Next.js PWA shell, Auth
+- Supabase schema with pgvector (`vector(4096)`), FastAPI skeleton, Next.js PWA shell, Auth
 
 ### Phase 1 — Core Chat ✅
 - Natural language capture (tasks, events, reminders, notes)
 - Parallel classify + embed via `asyncio.gather`
 - Misclassification correction
-- Chat UI + sidebar with Supabase Realtime
+- Chat UI + sidebar / bottom nav with Supabase Realtime
 
 ### Phase 2 — Memory & RAG ✅
-- Semantic search across all records via pgvector
+- Semantic search across records via pgvector
 - Context-aware Q&A with `deepseek-reasoner`
 - AI-maintained `context_note` per task
-- Conversation history
+- Conversation history (with metadata for follow-ups)
 
 ### Phase 3 — Daily Briefing ✅
 - Auto-generated briefing on app open
 - 3-state cache (fresh / stale / regenerate)
-- Deterministic task scoring (deadline + priority + age + energy)
+- Deterministic task scoring
 - Briefing invalidation on new captures
 
 ### Phase 4 — Connectors ✅
-- `POST /ingest` endpoint with API key auth
-- GitHub: notification → task/note mapping
-- Gmail: heuristic + LLM classification
-- Calendar: event sync (next 30 days)
+- `POST /ingest` with API key auth
+- GitHub, Gmail, Google Calendar sync
 - Deduplication via partial UNIQUE indexes
 
 ### Phase 5 — Observability ✅
-- 10 Prometheus metrics (chat latency, classification, embedding, RAG, etc.)
-- Grafana dashboard (12 panels)
-- Alert rules (error rate, latency, service down)
-- Extended health endpoint
+- Prometheus metrics + Grafana dashboards + alert rules
 
-### Phase 6 — Offline & PWA (planned)
-- Service worker + IndexedDB queue
-- Sync on reconnect
+### Phase 6 — Offline & PWA 🟡
+- Service worker via `@ducanh2912/next-pwa` (production builds)
+- IndexedDB offline message queue + drain on reconnect
+- Dev stub for `/sw.js`
+
+### Phase 7 — Study Tools ✅
+- **Study intent** with modes: `study_plan`, `quiz`, `explain`, `flashcards`, `summarize`
+- URL extraction from PDFs, arXiv, HTML articles (YouTube/Drive: metadata only)
+- **Follow-up context** — quiz and plan regeneration without re-pasting links
+- Markdown-rendered assistant responses in chat (`react-markdown` + GFM tables)
+- Optional web search for external/current information
+
+### Projects & Documents ✅
+- Per-project chat scoped to a project
+- Document upload (PDF, TXT, MD) to Supabase Storage
+
+---
+
+## Study assistant (quick guide)
+
+Paste material or links once, then continue in the same thread:
+
+```
+Ayúdame a estudiar esto
+[lista de temas + URLs]
+
+→ Plan de estudio completo (markdown)
+
+creo que NLP lo domino, hazme un par de preguntas
+→ Quiz enfocado en NLP (usa historial, no pide links de nuevo)
+
+vuelve a darme el plan completo
+→ Regenera el plan desde contexto previo
+```
+
+Follow-up messages recover URLs and conversation context from prior turns automatically.
 
 ---
 
@@ -109,14 +152,15 @@ EmbeddingProvider (abstract)
 git clone https://github.com/<user>/ARIA.git
 cd ARIA
 cp .env.example .env
-# Edit .env — fill in Supabase keys, DeepSeek API key, DeepInfra API key
+# Fill Supabase keys, DEEPSEEK_API_KEY, DEEPINFRA_API_KEY
+# Optional: TAVILY_API_KEY for web search
 ```
 
 ### 2. Start Supabase
 
 ```bash
 supabase start
-# Copy anon key and service_role key from `supabase status` into .env
+# Copy anon + service_role keys from `supabase status` into .env and frontend/.env.local
 ```
 
 ### 3. Apply migrations
@@ -129,7 +173,7 @@ supabase db reset
 
 ```bash
 docker compose up fastapi --build
-# Health check: curl http://localhost:8000/health
+# curl http://localhost:8000/health
 ```
 
 ### 5. Start frontend
@@ -138,15 +182,14 @@ docker compose up fastapi --build
 cd frontend
 pnpm install
 pnpm dev
-# Open http://localhost:3000
+# http://localhost:3000
 ```
 
-### 6. Start observability (optional)
+### 6. Observability (optional)
 
 ```bash
 docker compose up prometheus grafana -d
-# Grafana: http://localhost:3001 (admin/admin)
-# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3001 · Prometheus: http://localhost:9090
 ```
 
 ---
@@ -157,26 +200,20 @@ docker compose up prometheus grafana -d
 ARIA/
 ├── backend/
 │   ├── app/
-│   │   ├── connectors/       GitHub, Gmail, Calendar sync
-│   │   ├── core/             Config, deps, metrics registry
-│   │   ├── middleware/        Prometheus ASGI middleware
+│   │   ├── connectors/       GitHub, Gmail, Calendar
+│   │   ├── core/             Config, deps, metrics
 │   │   ├── providers/        LLM + Embedding abstractions
-│   │   ├── routes/           FastAPI endpoints (chat, ingest, briefing, health)
-│   │   ├── schemas/          Pydantic models (classifier, chat, ingest)
-│   │   └── services/         Business logic (classifier, RAG, record_writer)
-│   └── tests/                pytest suite (189 tests)
+│   │   ├── routes/           chat, briefing, ingest, documents, …
+│   │   ├── schemas/          Classifier, chat, ingest models
+│   │   └── services/         classifier, RAG, study, pdf, web_search, …
+│   └── tests/                pytest (229 tests)
 ├── frontend/
-│   ├── app/                  Next.js app router (chat, login, API routes)
-│   ├── components/           Chat UI, Sidebar, MessageList
-│   └── lib/                  Supabase client, hooks, offline queue
-├── supabase/
-│   ├── migrations/           SQL schema + pgvector indexes
-│   └── config.toml
-├── docker/
-│   ├── prometheus/           Scrape config + alert rules
-│   └── grafana/              Dashboards + provisioning
-├── docker-compose.yml        FastAPI + Prometheus + Grafana
-└── scripts/                  OAuth bootstrap utilities
+│   ├── app/                  App router (chat, projects, login, API routes)
+│   ├── components/chat/      ChatView, MessageList, MarkdownMessage
+│   └── lib/hooks/            offline queue, reminder poll
+├── supabase/migrations/      Schema, pgvector, documents, RLS
+├── docker/                   Prometheus + Grafana
+└── ARIA_PRD_v1.md            Product requirements
 ```
 
 ---
@@ -185,44 +222,40 @@ ARIA/
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/chat` | Classify, embed, and process a user message |
+| `POST` | `/chat` | Classify, route, and respond to a user message |
 | `POST` | `/ingest` | Ingest external records (API key auth) |
-| `GET` | `/briefing` | Get or generate daily briefing |
-| `POST` | `/connectors/sync/github` | Sync GitHub notifications |
-| `POST` | `/connectors/sync/gmail` | Sync Gmail messages |
-| `POST` | `/connectors/sync/calendar` | Sync Google Calendar events |
-| `GET` | `/health` | Health check with metrics readiness |
-| `GET` | `/metrics` | Prometheus metrics (text format) |
+| `GET` | `/briefing` | Daily briefing (cached) |
+| `POST` | `/connectors/sync/*` | GitHub, Gmail, Calendar sync |
+| `GET` | `/health` | Health + metrics readiness |
+| `GET` | `/metrics` | Prometheus scrape target |
+
+Frontend proxies auth-sensitive routes through Next.js API routes (`/api/chat`, `/api/briefing`, …).
 
 ---
 
 ## Testing
 
 ```bash
-# Backend tests
-cd backend
-uv sync
-uv run pytest tests/ -v
+# Backend
+cd backend && uv sync && uv run pytest tests/ -v
 
-# Frontend tests
-cd frontend
-pnpm test
+# Frontend
+cd frontend && pnpm test
 ```
 
 ---
 
 ## Environment Variables
 
-See `.env.example` for a complete reference.
+See `.env.example`. Key variables:
 
 | Variable | Description |
 |---|---|
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
-| `DEEPSEEK_API_KEY` | DeepSeek API key for LLM |
-| `DEEPINFRA_API_KEY` | DeepInfra/OpenRouter API key for embeddings |
-| `CORS_ORIGINS` | Comma-separated allowed origins (dev) |
+| `SUPABASE_URL` / keys | Supabase project |
+| `DEEPSEEK_API_KEY` | LLM classifier + reasoner |
+| `DEEPINFRA_API_KEY` | Qwen3 embeddings (OpenRouter) |
+| `TAVILY_API_KEY` | Optional — web search primary provider |
+| `NEXT_PUBLIC_API_URL` | Frontend → FastAPI base URL |
 
 ---
 
