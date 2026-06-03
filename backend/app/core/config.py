@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # after invalidation before triggering a full re-generation.
     BRIEFING_DEBOUNCE_MINUTES: int = 30
 
+    # Study tools
+    tavily_api_key: str = ""
+
     # Connector auth — Phase 4
     ingest_api_key: str = ""
     github_token: str = ""

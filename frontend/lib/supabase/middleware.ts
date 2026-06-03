@@ -14,6 +14,12 @@ import { type NextRequest, NextResponse } from "next/server";
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
 
+  // API routes handle their own auth — skip the expensive getUser() call here.
+  // This saves a full round-trip to Supabase Auth on every API request.
+  if (request.nextUrl.pathname.startsWith("/api")) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,11 +29,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Write to the request so downstream handlers see the updated cookies
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          // Recreate the response so we can attach Set-Cookie headers
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -37,18 +41,14 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
   );
 
-  // Refresh the session — this must not be removed.
-  // Without this, Server Component auth checks will fail when the token expires.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users away from protected routes
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/_next") &&
-    !request.nextUrl.pathname.startsWith("/api")
+    !request.nextUrl.pathname.startsWith("/_next")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

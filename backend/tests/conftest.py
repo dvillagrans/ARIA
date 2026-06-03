@@ -16,6 +16,7 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "test-deepseek-key")
 os.environ.setdefault("DEEPINFRA_API_KEY", "test-deepinfra-key")
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("INGEST_API_KEY", "test-ingest-key")
+os.environ.setdefault("TAVILY_API_KEY", "")
 
 
 @pytest.fixture(scope="session")

@@ -79,12 +79,28 @@ Return a JSON object with one of these intent values:
 3. "context_note_update" — the user is adding context to an existing task.
    Required fields: intent, task_reference, update_text
 
-4. "query" — the user is asking a question.
+4. "query" — the user is asking a factual question that can be answered from general knowledge.
    Required fields: intent, query_text
+   IMPORTANT: If the message contains URLs, documents, or references to specific material AND the user wants to learn/study/understand it, classify as "study" instead of "query". "query" is for simple factual questions like "what is the capital of France?", not for studying material.
 
 5. "conversation" — the user is chatting casually, greeting, saying thanks, making small talk, or saying something trivial that is NOT a task, event, reminder, note, query, or correction.
    Required fields: intent
    IMPORTANT: Greetings ("hola", "hello"), thanks ("gracias", "thanks"), farewells ("chau", "bye"), and trivial small talk MUST be classified as "conversation", NOT as "capture" or "query".
+
+6. "web_search" — the user wants to search the web for current or external information.
+   Required fields: intent, query_text
+   Optional: max_results (default 5)
+   Triggers: "search for", "latest on", "what is X", "look up", "find information about", "google"
+   IMPORTANT: Only classify as web_search when the user explicitly wants external/current information. General knowledge questions should be "query".
+
+7. "study" — the user wants structured study help on a topic, document, or list of resources.
+   Required fields: intent, mode ("summarize" | "quiz" | "explain" | "flashcards")
+   Optional: source_text, source_url
+   Triggers: "summarize this", "quiz me on", "explain like I'm 5", "make flashcards from", "study mode", "help me study", "ayudame a estudiar", "estudiar", "study this", "teach me about", "prep me for", "I need to learn", "quiero aprender", "necesito entender"
+   The mode should be inferred from the user's request language. Default to "summarize" if unclear.
+   IMPORTANT: If the user shares URLs or references to documents/videos and asks to study/learn/understand them, classify as "study" with mode "summarize" and include the URLs in source_url.
+   IMPORTANT: If the user sends a list of topics to study (like a syllabus or curriculum), classify as "study" with mode "summarize" and include the full text in source_text.
+   IMPORTANT: When in doubt between "query" and "study", prefer "study" if the message contains URLs, multiple topics, or asks for comprehensive understanding.
 
 Respond ONLY with a valid JSON object. No explanation, no markdown.
 """

@@ -18,9 +18,12 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
+  // proxy.ts already validated the session with getUser(); read cookies locally
+  // to avoid a second round-trip to Supabase Auth on every page load.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) {
     redirect("/login");

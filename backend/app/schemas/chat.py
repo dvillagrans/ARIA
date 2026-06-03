@@ -20,7 +20,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     status: Literal["ok", "error"]
-    intent: Literal["capture", "correction", "context_note_update", "query", "conversation"]
+    intent: Literal["capture", "correction", "context_note_update", "query", "conversation", "web_search", "study"]
     record_type: Literal["task", "event", "reminder", "note"] | None = None
     record_id: UUID | None = None
     confirmation_text: str

@@ -96,10 +96,10 @@ function groupByDay(events: CalendarEvent[]): DayGroup[] {
       label = "Tomorrow";
       tier = "tomorrow";
     } else if (eventDay <= endOfWeek) {
-      label = eventDate.toLocaleDateString(undefined, { weekday: "long" });
+      label = eventDate.toLocaleDateString("en-US", { weekday: "long" });
       tier = "this-week";
     } else {
-      label = eventDate.toLocaleDateString(undefined, {
+      label = eventDate.toLocaleDateString("en-US", {
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -147,7 +147,7 @@ function getEventColor(type: string): string {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Date(iso).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   });

@@ -29,9 +29,9 @@ export default function RootLayout({
       <head>
         {process.env.NODE_ENV === "development" && (
           <Script
-            src="//unpkg.com/react-grab/dist/index.global.js"
+            src="https://unpkg.com/react-grab@0.1.37/dist/index.global.js"
             crossOrigin="anonymous"
-            strategy="beforeInteractive"
+            strategy="lazyOnload"
             data-options={JSON.stringify(
               { activationMode: "toggle", allowActivationInsideInput: true, maxContextLines: 3 }
             )}

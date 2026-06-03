@@ -53,6 +53,23 @@ class ConversationIntent(BaseModel):
     classifier_raw: dict = {}
 
 
+class WebSearchIntent(BaseModel):
+    """User wants to search the web for current/external information."""
+    intent: Literal["web_search"]
+    query_text: str
+    max_results: int = 5
+    classifier_raw: dict = {}
+
+
+class StudyIntent(BaseModel):
+    """User wants structured study assistance (summarize, quiz, explain, flashcards)."""
+    intent: Literal["study"]
+    mode: Literal["summarize", "quiz", "explain", "flashcards"]
+    source_text: str | None = None
+    source_url: str | None = None
+    classifier_raw: dict = {}
+
+
 ClassifierOutput = Annotated[
     Union[
         CaptureIntent,
@@ -60,6 +77,8 @@ ClassifierOutput = Annotated[
         ContextNoteIntent,
         QueryIntent,
         ConversationIntent,
+        WebSearchIntent,
+        StudyIntent,
     ],
     Field(discriminator="intent"),
 ]

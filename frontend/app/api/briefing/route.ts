@@ -46,6 +46,18 @@ export async function GET(): Promise<Response> {
   }
 
   // 3. Return FastAPI BriefingResponse as-is.
+  if (!fastapiResponse.ok) {
+    const text = await fastapiResponse.text().catch(() => "Backend error");
+    console.error("[api/briefing] FastAPI error:", fastapiResponse.status, text);
+    return NextResponse.json(
+      { error: text },
+      { status: fastapiResponse.status }
+    );
+  }
+
   const data = await fastapiResponse.json();
-  return NextResponse.json(data, { status: fastapiResponse.status });
+  return NextResponse.json(data, {
+    status: fastapiResponse.status,
+    headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=60" },
+  });
 }

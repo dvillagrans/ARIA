@@ -26,16 +26,24 @@ def _make_mock_db_for_insert(inserted_data=None):
 
 
 def _make_mock_db_for_select(rows=None):
-    """Mock db that returns rows from select().eq()...order().limit().execute()."""
+    """Mock db that returns rows from select().eq()...order().limit().is_().execute()."""
     data = rows or []
     execute_mock = AsyncMock(return_value=MagicMock(data=data))
-    limit_mock = MagicMock(return_value=MagicMock(execute=execute_mock))
+
+    # Build the chain end first: limit returns an object with execute + is_.
+    limit_result = MagicMock()
+    limit_result.execute = execute_mock
+    limit_result.is_ = MagicMock(return_value=limit_result)
+    limit_result.eq = MagicMock(return_value=limit_result)
+
+    limit_mock = MagicMock(return_value=limit_result)
     order_mock = MagicMock(return_value=MagicMock(limit=limit_mock))
 
-    # Support chained .eq() calls: each eq() returns an object with eq + order.
+    # Support chained .eq() and .is_() calls: each returns the chain object.
     eq_chain = MagicMock()
     eq_chain.order = order_mock
     eq_chain.eq = MagicMock(return_value=eq_chain)
+    eq_chain.is_ = MagicMock(return_value=eq_chain)
     eq_chain.limit = limit_mock
 
     select_mock = MagicMock(return_value=MagicMock(eq=MagicMock(return_value=eq_chain)))

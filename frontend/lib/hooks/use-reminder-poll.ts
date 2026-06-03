@@ -11,7 +11,7 @@ export interface DueReminder {
   project_id?: string;
 }
 
-const POLL_INTERVAL_MS = 60_000; // 60 seconds
+const POLL_INTERVAL_MS = 120_000; // 120 seconds
 
 export function useReminderPoll() {
   const [dueReminders, setDueReminders] = useState<DueReminder[]>([]);

@@ -121,6 +121,29 @@ def _make_settings():
     return s
 
 
+def _make_github_db_mock():
+    """Mock db that handles both connector_state select and upsert chains."""
+    # select chain: db.table("connector_state").select(...).eq(...).eq(...).execute()
+    select_execute = AsyncMock(return_value=MagicMock(data=[]))
+    select_eq_chain = MagicMock()
+    select_eq_chain.eq = MagicMock(return_value=select_eq_chain)
+    select_eq_chain.execute = select_execute
+    select_mock = MagicMock(return_value=MagicMock(eq=MagicMock(return_value=select_eq_chain)))
+
+    # upsert chain: db.table("connector_state").upsert(...).execute()
+    upsert_execute = AsyncMock(return_value=MagicMock(data=[{}]))
+    upsert_mock = MagicMock(return_value=MagicMock(execute=upsert_execute))
+
+    # db.table returns a mock with both select and upsert
+    table_mock = MagicMock()
+    table_mock.select = select_mock
+    table_mock.upsert = upsert_mock
+
+    db = MagicMock()
+    db.table = MagicMock(return_value=table_mock)
+    return db
+
+
 def _make_fifty_notifications() -> list[dict]:
     return [_notification("mention", nid=str(i)) for i in range(80)]
 
@@ -137,12 +160,7 @@ async def test_sync_capped_at_50():
         lambda req: httpx.Response(200, json=notifications)
     )
 
-    db = MagicMock()
-    # connector_state upsert
-    upsert_execute = AsyncMock(return_value=MagicMock(data=[{}]))
-    db.table = MagicMock(return_value=MagicMock(
-        upsert=MagicMock(return_value=MagicMock(execute=upsert_execute))
-    ))
+    db = _make_github_db_mock()
 
     embedder = MagicMock()
     llm = MagicMock()
@@ -181,11 +199,7 @@ async def test_sync_idempotent():
     notifications = [_notification("mention", nid=str(i)) for i in range(3)]
     user_id = uuid.uuid4()
 
-    db = MagicMock()
-    upsert_execute = AsyncMock(return_value=MagicMock(data=[{}]))
-    db.table = MagicMock(return_value=MagicMock(
-        upsert=MagicMock(return_value=MagicMock(execute=upsert_execute))
-    ))
+    db = _make_github_db_mock()
 
     settings = _make_settings()
 

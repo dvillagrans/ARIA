@@ -61,7 +61,18 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
         ? query.eq("project_id", projectId)
         : query.is("project_id", null);
 
-      const { data, error } = await query;
+      // Fetch history and briefing in parallel — briefing is only used if
+      // the history doesn't already contain one, but starting it early means
+      // it's ready immediately when needed.
+      const briefingPromise = isProjectChat
+        ? Promise.resolve(null)
+        : fetch("/api/briefing").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+      const [{ data, error }, briefingData] = await Promise.all([
+        query,
+        briefingPromise,
+      ]);
+
       if (cancelled) return;
 
       if (!error && data) {
@@ -74,7 +85,7 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
           }))
         );
 
-        if (!isProjectChat) {
+        if (!isProjectChat && briefingData) {
           const today = new Date().toISOString().split("T")[0];
           const first = data[0];
           const hasBriefing =
@@ -83,19 +94,13 @@ export default function ChatView({ projectId, projectName, projectColor, hideHea
             first?.metadata?.date === today;
 
           if (!hasBriefing) {
-            try {
-              const res = await fetch("/api/briefing");
-              if (res.ok && !cancelled) {
-                const bd = await res.json();
-                setBriefing({
-                  id: `briefing-${today}`,
-                  role: "assistant",
-                  content: bd.stale
-                    ? `${bd.content}\n\n_(Updated recently — briefing may be slightly stale.)_`
-                    : bd.content,
-                });
-              }
-            } catch { /* non-fatal */ }
+            setBriefing({
+              id: `briefing-${today}`,
+              role: "assistant",
+              content: briefingData.stale
+                ? `${briefingData.content}\n\n_(Updated recently — briefing may be slightly stale.)_`
+                : briefingData.content,
+            });
           }
         }
       }

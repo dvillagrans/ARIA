@@ -15,7 +15,8 @@ export const config = {
      * - /login (auth page — no session needed)
      * - /manifest.webmanifest (static PWA manifest)
      * - /icons/* (PWA icons)
+     * - /sw.js (service worker — static, no session needed)
      */
-    "/((?!_next/static|_next/image|favicon.ico|login|manifest\\.webmanifest|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|login|manifest\\.webmanifest|sw\\.js|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp|js|css|woff2?)$).*)",
   ],
 };

@@ -28,16 +28,19 @@ from app.core.metrics import (
 from app.providers.base import EmbeddingProvider, LLMProvider
 from app.providers.qwen import EmbeddingError
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.classifier import CaptureIntent, ContextNoteIntent, ConversationIntent, CorrectionIntent, QueryIntent
+from app.schemas.classifier import CaptureIntent, ContextNoteIntent, ConversationIntent, CorrectionIntent, QueryIntent, StudyIntent, WebSearchIntent
 from app.services import (
     briefing_service,
     calendar_sync,
     classifier_service,
     context_note_service,
     conversation_service,
+    pdf_service,
     project_resolver,
     rag_service,
     record_writer,
+    study_service,
+    web_search_service,
 )
 from app.services.classifier_service import ClassifierError
 
@@ -441,6 +444,112 @@ async def _chat_impl(
             record_type=None,
             record_id=None,
             confirmation_text=reply_text,
+            metadata=metadata,
+        )
+
+    # --- WEB SEARCH intent — external knowledge retrieval ---
+    elif isinstance(intent_obj, WebSearchIntent):
+        try:
+            search_results = await web_search_service.search(
+                intent_obj.query_text, settings, max_results=intent_obj.max_results
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("chat: web_search_service.search() failed: %s", exc)
+            search_results = []
+
+        # Build context from search results for the reasoner.
+        context_texts: list[str] = []
+        for r in search_results:
+            context_texts.append(f"Source: {r['title']} ({r['url']}): {r['snippet']}")
+
+        try:
+            answer_text = await llm.reason(
+                f"Answer based on these web search results:\n\n"
+                + "\n".join(context_texts)
+                + f"\n\nUser question: {intent_obj.query_text}",
+                history=history,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("chat: web search reason() failed: %s", exc)
+            if search_results:
+                answer_text = "Here are the search results I found:\n" + "\n".join(
+                    f"- {r['title']}: {r['snippet']}" for r in search_results
+                )
+            else:
+                answer_text = "I couldn't search the web right now."
+
+        metadata = {
+            "intent": "web_search",
+            "search_results": [
+                {"title": r["title"], "url": r["url"], "snippet": r["snippet"][:200]}
+                for r in search_results
+            ],
+            "classifier_raw": intent_obj.classifier_raw,
+        }
+
+        user_turn, assistant_turn = _turns(request, assistant_content=answer_text, metadata=metadata)
+        try:
+            await conversation_service.save(user_turn, assistant_turn, db)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("chat: conversation_service.save() failed (non-fatal): %s", exc)
+
+        return ChatResponse(
+            status="ok",
+            intent="web_search",
+            record_type=None,
+            record_id=None,
+            confirmation_text=answer_text,
+            metadata=metadata,
+        )
+
+    # --- STUDY intent — structured study assistance ---
+    elif isinstance(intent_obj, StudyIntent):
+        source_text = intent_obj.source_text or ""
+
+        # If source_url provided, download and extract PDF text.
+        if intent_obj.source_url and not source_text:
+            try:
+                source_text = await pdf_service.download_and_extract(intent_obj.source_url)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("chat: pdf_service.download_and_extract() failed: %s", exc)
+                source_text = ""
+
+        if not source_text:
+            answer_text = (
+                "I need source content to study from. "
+                "Please provide text or a PDF URL."
+            )
+        else:
+            try:
+                answer_text = await study_service.generate(
+                    mode=intent_obj.mode,
+                    source_text=source_text,
+                    llm=llm,
+                    history=history,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("chat: study_service.generate() failed: %s", exc)
+                answer_text = f"Study mode '{intent_obj.mode}' encountered an error."
+
+        metadata = {
+            "intent": "study",
+            "mode": intent_obj.mode,
+            "source_url": intent_obj.source_url,
+            "classifier_raw": intent_obj.classifier_raw,
+        }
+
+        user_turn, assistant_turn = _turns(request, assistant_content=answer_text, metadata=metadata)
+        try:
+            await conversation_service.save(user_turn, assistant_turn, db)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("chat: conversation_service.save() failed (non-fatal): %s", exc)
+
+        return ChatResponse(
+            status="ok",
+            intent="study",
+            record_type=None,
+            record_id=None,
+            confirmation_text=answer_text,
             metadata=metadata,
         )
 

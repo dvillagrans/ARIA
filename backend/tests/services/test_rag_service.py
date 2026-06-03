@@ -174,19 +174,6 @@ async def test_answer_returns_string_and_passages():
 
     row = _sample_row("tasks")
     db = _make_db_rpc_response([row])
-    # get_history also uses db; patch conversations table call
-    mock_conv_response = AsyncMock(return_value=MagicMock(data=[]))
-    db.table = MagicMock(return_value=MagicMock(
-        select=MagicMock(return_value=MagicMock(
-            eq=MagicMock(return_value=MagicMock(
-                order=MagicMock(return_value=MagicMock(
-                    limit=MagicMock(return_value=MagicMock(
-                        execute=mock_conv_response
-                    ))
-                ))
-            ))
-        ))
-    ))
 
     embedder = _make_embedder()
     llm = _make_llm("ARIA's answer here.")
@@ -201,7 +188,7 @@ async def test_answer_returns_string_and_passages():
     )
 
     user_id = uuid4()
-    answer_text, passages = await answer(user_id, "My question?", db, llm, embedder, settings)
+    answer_text, passages = await answer(user_id, "My question?", db, llm, embedder, settings, history=[])
 
     assert isinstance(answer_text, str)
     assert len(answer_text) > 0
@@ -222,18 +209,6 @@ async def test_answer_calls_llm_reason():
 
     row = _sample_row("tasks")
     db = _make_db_rpc_response([row])
-    mock_conv_response = AsyncMock(return_value=MagicMock(data=[]))
-    db.table = MagicMock(return_value=MagicMock(
-        select=MagicMock(return_value=MagicMock(
-            eq=MagicMock(return_value=MagicMock(
-                order=MagicMock(return_value=MagicMock(
-                    limit=MagicMock(return_value=MagicMock(
-                        execute=mock_conv_response
-                    ))
-                ))
-            ))
-        ))
-    ))
 
     embedder = _make_embedder()
     llm = _make_llm()
@@ -248,7 +223,7 @@ async def test_answer_calls_llm_reason():
     )
 
     user_id = uuid4()
-    await answer(user_id, "question?", db, llm, embedder, settings)
+    await answer(user_id, "question?", db, llm, embedder, settings, history=[])
 
     llm.reason.assert_called_once()
 

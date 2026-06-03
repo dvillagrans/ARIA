@@ -27,8 +27,21 @@ export async function GET(): Promise<Response> {
       `${FASTAPI_BASE_URL}/reminders/due?user_id=${user.id}`,
       { method: "GET", headers: { "Content-Type": "application/json" } }
     );
+
+    if (!fastapiResponse.ok) {
+      const text = await fastapiResponse.text().catch(() => "Backend error");
+      console.error("[api/reminders/due] FastAPI error:", fastapiResponse.status, text);
+      return NextResponse.json(
+        { error: text },
+        { status: fastapiResponse.status }
+      );
+    }
+
     const data = await fastapiResponse.json();
-    return NextResponse.json(data, { status: fastapiResponse.status });
+    return NextResponse.json(data, {
+      status: fastapiResponse.status,
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=30" },
+    });
   } catch (err) {
     console.error("[api/reminders/due] FastAPI unreachable:", err);
     return NextResponse.json({ error: "Backend unavailable" }, { status: 503 });
