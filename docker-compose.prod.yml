@@ -6,14 +6,8 @@ services:
     expose:
       - "8000"
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.aria-api.rule=Host(`aria-api.dvillagrans.dev`)"
-      - "traefik.http.routers.aria-api.entrypoints=websecure"
-      - "traefik.http.routers.aria-api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.aria-api.loadbalancer.server.port=8000"
-      - "traefik.http.middlewares.aria-api-ratelimit.ratelimit.average=100"
-      - "traefik.http.middlewares.aria-api-ratelimit.ratelimit.burst=50"
-      - "traefik.http.routers.aria-api.middlewares=aria-api-ratelimit"
+      - "proxy.aliases=aria-api"
+      - "proxy.network=aria_default"
     networks:
       - default
     restart: unless-stopped
@@ -25,5 +19,4 @@ services:
 
 networks:
   default:
-    external: true
-    name: timeup-network
+    driver: bridge
