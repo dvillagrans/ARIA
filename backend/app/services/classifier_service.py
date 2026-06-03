@@ -95,11 +95,17 @@ Return a JSON object with one of these intent values:
 
 7. "study" — the user wants structured study help on a topic, document, or list of resources.
    Required fields: intent, mode ("summarize" | "quiz" | "explain" | "flashcards")
-   Optional: source_text, source_url
+   Optional: source_text, source_urls (list of URLs)
    Triggers: "summarize this", "quiz me on", "explain like I'm 5", "make flashcards from", "study mode", "help me study", "ayudame a estudiar", "estudiar", "study this", "teach me about", "prep me for", "I need to learn", "quiero aprender", "necesito entender"
    The mode should be inferred from the user's request language. Default to "summarize" if unclear.
-   IMPORTANT: If the user shares URLs or references to documents/videos and asks to study/learn/understand them, classify as "study" with mode "summarize" and include the URLs in source_url.
-   IMPORTANT: If the user sends a list of topics to study (like a syllabus or curriculum), classify as "study" with mode "summarize" and include the full text in source_text.
+   
+   CRITICAL RULES:
+   - Extract ALL URLs from the user's message and put them in source_urls as a list.
+   - source_text should ONLY contain the actual text content to study, NOT the user's request or message.
+   - If the user only provides URLs (no inline text), leave source_text empty and put all URLs in source_urls.
+   - If the user pastes actual content (like an article text), put that in source_text.
+   - NEVER put the user's message or request text in source_text.
+   
    IMPORTANT: When in doubt between "query" and "study", prefer "study" if the message contains URLs, multiple topics, or asks for comprehensive understanding.
 
 Respond ONLY with a valid JSON object. No explanation, no markdown.

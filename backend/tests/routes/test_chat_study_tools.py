@@ -75,22 +75,22 @@ def test_study_intent_invalid_mode():
 
 
 def test_study_intent_optional_fields():
-    """StudyIntent allows optional source_text and source_url."""
+    """StudyIntent allows optional source_text and source_urls."""
     intent = StudyIntent(intent="study", mode="quiz")
     assert intent.source_text is None
-    assert intent.source_url is None
+    assert intent.source_urls == []
 
 
 def test_study_intent_with_source():
-    """StudyIntent accepts source_text and source_url."""
+    """StudyIntent accepts source_text and source_urls."""
     intent = StudyIntent(
         intent="study",
         mode="summarize",
         source_text="some text",
-        source_url="https://example.com/file.pdf",
+        source_urls=["https://example.com/file.pdf", "https://example.com/paper.pdf"],
     )
     assert intent.source_text == "some text"
-    assert intent.source_url == "https://example.com/file.pdf"
+    assert len(intent.source_urls) == 2
 
 
 # ---------------------------------------------------------------------------

@@ -151,6 +151,17 @@ async def _chat_impl(
 
     intent_obj = classifier_result
 
+    # Log classifier output for debugging.
+    logger.info(
+        "chat: classified intent=%s for user=%s",
+        getattr(intent_obj, "intent", "unknown"),
+        request.user_id,
+    )
+    if hasattr(intent_obj, "source_urls"):
+        logger.info("chat: study source_urls=%s", intent_obj.source_urls)
+    if hasattr(intent_obj, "source_text") and intent_obj.source_text:
+        logger.info("chat: study source_text_len=%d", len(intent_obj.source_text))
+
     # --- CAPTURE intent ---
     if isinstance(intent_obj, CaptureIntent):
         # If the request already carries a project_id (project-scoped chat), use it
@@ -506,18 +517,24 @@ async def _chat_impl(
     elif isinstance(intent_obj, StudyIntent):
         source_text = intent_obj.source_text or ""
 
-        # If source_url provided, download and extract PDF text.
-        if intent_obj.source_url and not source_text:
-            try:
-                source_text = await pdf_service.download_and_extract(intent_obj.source_url)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("chat: pdf_service.download_and_extract() failed: %s", exc)
-                source_text = ""
+        # If source_urls provided, download and extract text from each.
+        if intent_obj.source_urls and not source_text:
+            extracted_parts = []
+            for url in intent_obj.source_urls:
+                try:
+                    text = await pdf_service.download_and_extract(url)
+                    if text:
+                        extracted_parts.append(f"--- Source: {url} ---\n{text}")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("chat: pdf_service.download_and_extract() failed for %s: %s", url, exc)
+
+            if extracted_parts:
+                source_text = "\n\n".join(extracted_parts)
 
         if not source_text:
             answer_text = (
                 "I need source content to study from. "
-                "Please provide text or a PDF URL."
+                "Please provide text or PDF URLs."
             )
         else:
             try:
@@ -534,7 +551,7 @@ async def _chat_impl(
         metadata = {
             "intent": "study",
             "mode": intent_obj.mode,
-            "source_url": intent_obj.source_url,
+            "source_urls": intent_obj.source_urls,
             "classifier_raw": intent_obj.classifier_raw,
         }
 

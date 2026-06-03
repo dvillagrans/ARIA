@@ -1,7 +1,7 @@
 """
 Unit tests for pdf_service.
 
-Tests PDF text extraction from bytes and download+extract flow.
+Tests PDF text extraction from bytes, HTML extraction, and download+extract flow.
 """
 
 import pytest
@@ -9,15 +9,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 
 # ---------------------------------------------------------------------------
-# Tests: _extract_from_bytes
+# Tests: _extract_from_pdf_bytes
 # ---------------------------------------------------------------------------
 
 def test_extract_from_bytes_valid_pdf():
-    """_extract_from_bytes extracts text from valid PDF bytes."""
-    from app.services.pdf_service import _extract_from_bytes
+    """_extract_from_pdf_bytes extracts text from valid PDF bytes."""
+    from app.services.pdf_service import _extract_from_pdf_bytes
 
     # Create a minimal PDF with text content.
-    # This is a real minimal PDF with "Hello World" text.
     pdf_bytes = (
         b"%PDF-1.4\n"
         b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
@@ -37,11 +36,8 @@ def test_extract_from_bytes_valid_pdf():
         b"startxref\n441\n%%EOF"
     )
 
-    # This test verifies the function doesn't crash; actual text extraction
-    # depends on pypdf parsing. If pypdf can't parse our minimal PDF,
-    # we test the ValueError path instead.
     try:
-        result = _extract_from_bytes(pdf_bytes)
+        result = _extract_from_pdf_bytes(pdf_bytes)
         assert isinstance(result, str)
     except ValueError:
         # Expected if our minimal PDF doesn't have extractable text
@@ -49,11 +45,45 @@ def test_extract_from_bytes_valid_pdf():
 
 
 def test_extract_from_bytes_empty_content_raises():
-    """_extract_from_bytes raises ValueError for empty/non-PDF content."""
-    from app.services.pdf_service import _extract_from_bytes
+    """_extract_from_pdf_bytes raises ValueError for empty/non-PDF content."""
+    from app.services.pdf_service import _extract_from_pdf_bytes
 
     with pytest.raises(Exception):  # pypdf raises various errors on invalid PDF
-        _extract_from_bytes(b"not a pdf")
+        _extract_from_pdf_bytes(b"not a pdf")
+
+
+# ---------------------------------------------------------------------------
+# Tests: _extract_from_html_bytes
+# ---------------------------------------------------------------------------
+
+def test_extract_from_html_basic():
+    """_extract_from_html_bytes extracts text from HTML content."""
+    from app.services.pdf_service import _extract_from_html_bytes
+
+    html = b"<html><body><h1>Title</h1><p>This is a paragraph with enough content to pass the minimum threshold for extraction.</p></body></html>"
+    result = _extract_from_html_bytes(html)
+
+    assert "Title" in result
+    assert "paragraph" in result
+
+
+def test_extract_from_html_strips_scripts():
+    """_extract_from_html_bytes removes script and style tags."""
+    from app.services.pdf_service import _extract_from_html_bytes
+
+    html = b"<html><script>alert('hi')</script><body>Visible content that should be extracted from this HTML document.</body></html>"
+    result = _extract_from_html_bytes(html)
+
+    assert "alert" not in result
+    assert "Visible" in result
+
+
+def test_extract_from_html_empty_raises():
+    """_extract_from_html_bytes raises ValueError for empty HTML."""
+    from app.services.pdf_service import _extract_from_html_bytes
+
+    with pytest.raises(ValueError, match="No meaningful text"):
+        _extract_from_html_bytes(b"<html><body></body></html>")
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +97,7 @@ async def test_download_and_extract_success():
 
     mock_response = MagicMock()
     mock_response.content = b"%PDF-1.4 fake pdf content"
+    mock_response.headers = {"content-type": "application/pdf"}
     mock_response.raise_for_status = MagicMock()
 
     with patch("httpx.AsyncClient") as mock_client_cls:
@@ -76,19 +107,42 @@ async def test_download_and_extract_success():
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_cls.return_value = mock_client
 
-        with patch("app.services.pdf_service._extract_from_bytes", return_value="extracted text"):
+        with patch("app.services.pdf_service._extract_from_pdf_bytes", return_value="extracted text"):
             result = await download_and_extract("https://example.com/file.pdf")
 
     assert result == "extracted text"
 
 
 @pytest.mark.asyncio
-async def test_download_and_extract_rejects_oversized_pdf():
-    """download_and_extract raises ValueError for PDFs over 10MB."""
-    from app.services.pdf_service import download_and_extract, _MAX_PDF_SIZE
+async def test_download_and_extract_html():
+    """download_and_extract handles HTML content when response is not PDF."""
+    from app.services.pdf_service import download_and_extract
 
     mock_response = MagicMock()
-    mock_response.content = b"x" * (_MAX_PDF_SIZE + 1)
+    mock_response.content = b"<html><body>Article content with enough text to pass the minimum extraction threshold for HTML documents.</body></html>"
+    mock_response.headers = {"content-type": "text/html"}
+    mock_response.raise_for_status = MagicMock()
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+
+        result = await download_and_extract("https://example.com/article")
+
+    assert "Article content" in result
+
+
+@pytest.mark.asyncio
+async def test_download_and_extract_rejects_oversized():
+    """download_and_extract raises ValueError for files over 10MB."""
+    from app.services.pdf_service import download_and_extract, _MAX_FILE_SIZE
+
+    mock_response = MagicMock()
+    mock_response.content = b"x" * (_MAX_FILE_SIZE + 1)
+    mock_response.headers = {"content-type": "application/pdf"}
     mock_response.raise_for_status = MagicMock()
 
     with patch("httpx.AsyncClient") as mock_client_cls:

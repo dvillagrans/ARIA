@@ -66,7 +66,7 @@ class StudyIntent(BaseModel):
     intent: Literal["study"]
     mode: Literal["summarize", "quiz", "explain", "flashcards"]
     source_text: str | None = None
-    source_url: str | None = None
+    source_urls: list[str] = []
     classifier_raw: dict = {}
 
 
