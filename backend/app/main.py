@@ -73,6 +73,11 @@ def create_app() -> FastAPI:
     application.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
     application.include_router(documents.router, tags=["documents"])
 
+    # Root endpoint — avoids 404 on GET / (GoDoxy dashboard, bots, etc.)
+    @application.get("/", include_in_schema=False)
+    async def root() -> dict:
+        return {"service": "aria", "version": "0.1.0", "health": "/health"}
+
     # Prometheus metrics endpoint — publicly accessible for scraping.
     # NOTE: CONTENT_TYPE_LATEST from prometheus_client uses version=1.0.0
     # (current library default) rather than the spec's version=0.0.4.
