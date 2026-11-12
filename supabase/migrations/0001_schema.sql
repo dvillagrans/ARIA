@@ -411,60 +411,13 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 10. Seed: usuario inicial
--- Cambiá el email y la contraseña antes de usar en producción.
+-- 10. Initial user seed
+-- Removed from the migration: seeding a user with hard-coded credentials
+-- is unsafe. Create the initial user manually after `supabase db reset`
+-- with supabase/seed_initial_user.sql, which reads credentials from the
+-- SEED_USER_EMAIL and SEED_USER_PASSWORD environment variables and refuses
+-- to run when they are unset or weak.
 -- =====================================================================
-DO $$
-DECLARE
-  v_uid uuid;
-BEGIN
-  -- Insert the auth user only if the email does not already exist.
-  INSERT INTO auth.users (
-    instance_id,
-    id,
-    aud,
-    role,
-    email,
-    encrypted_password,
-    email_confirmed_at,
-    raw_user_meta_data,
-    created_at,
-    updated_at,
-    confirmation_token,
-    email_change,
-    email_change_token_new,
-    recovery_token
-  ) VALUES (
-    '00000000-0000-0000-0000-000000000000',
-    gen_random_uuid(),
-    'authenticated',
-    'authenticated',
-    'dvillagrans@aria.local',
-    crypt('admin', gen_salt('bf')),
-    now(),
-    jsonb_build_object('name', 'dvillagrans'),
-    now(),
-    now(),
-    '', '', '', ''
-  )
-  ON CONFLICT DO NOTHING;
-
-  -- Resolve the real UID regardless of whether INSERT ran or was skipped.
-  SELECT id INTO v_uid FROM auth.users WHERE email = 'dvillagrans@aria.local';
-
-  -- Ensure public.users row exists (trigger may have already created it).
-  INSERT INTO public.users (id, name, timezone)
-  VALUES (v_uid, 'dvillagrans', 'UTC')
-  ON CONFLICT (id) DO NOTHING;
-
-  -- Ensure Personal project exists.
-  IF NOT EXISTS (
-    SELECT 1 FROM public.projects WHERE user_id = v_uid AND name = 'Personal'
-  ) THEN
-    INSERT INTO public.projects (user_id, name, color, context, is_active)
-    VALUES (v_uid, 'Personal', '#6366f1', 'Personal tasks and reminders', true);
-  END IF;
-END $$;
 
 -- =====================================================================
 -- 11. Grants (restaurar permisos por defecto de Supabase)
