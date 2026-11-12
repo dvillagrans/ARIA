@@ -1,4 +1,4 @@
-name: Deploy Backend to VPS
+name: Deploy Backend
 
 on:
   push:
@@ -11,7 +11,12 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: dvillagrans/aria-backend
+  # Repository variable: <owner>/<image> as it should appear on GHCR
+  # (e.g. "your-user/aria-backend").
+  IMAGE_NAME: ${{ vars.GHCR_IMAGE_NAME }}
+  # Repository variable: deployment directory on the target host
+  # (e.g. "/home/deploy/aria").
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
 
 jobs:
   test:
@@ -89,14 +94,14 @@ jobs:
       - name: Checkout (for docker-compose.prod.yml)
         uses: actions/checkout@v4
 
-      - name: Deploy to VPS via SSH
+      - name: Deploy to host via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd ~/aria
+            cd "${{ env.DEPLOY_PATH }}"
 
             # Save current image tag for rollback
             OLD_IMAGE=$(docker inspect --format='{{.Image}}' aria-fastapi 2>/dev/null || echo "")
@@ -106,7 +111,7 @@ jobs:
             echo "${{ secrets.ENV_FILE }}" > .env
 
             # Login to GHCR
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u dvillagrans --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # Pull latest image
             docker compose pull
@@ -137,7 +142,7 @@ jobs:
               docker compose down
               if [ -n "$OLD_IMAGE" ]; then
                 echo "Restoring old image..."
-                docker run -d --name aria-fastapi --env-file .env --network timeup-network $OLD_IMAGE
+                docker run -d --name aria-fastapi --env-file .env --network aria_backend $OLD_IMAGE
               fi
               exit 1
             fi
@@ -147,12 +152,12 @@ jobs:
 
             echo "Deploy complete: $(date)"
 
-      - name: Sync docker-compose.prod.yml to VPS
+      - name: Sync docker-compose.prod.yml to host
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "docker-compose.prod.yml"
-          target: "~/aria/"
+          target: "${{ env.DEPLOY_PATH }}/"
           overwrite: true
