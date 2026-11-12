@@ -17,7 +17,9 @@ the workflow itself. Manual runs are available via `workflow_dispatch`.
 2. **Build and push**: on success, the backend Docker image is built and
    pushed to GHCR with two tags — a short commit SHA and `latest`.
 3. **Deploy**: the workflow opens an SSH session to the target host and:
-   - writes the runtime `.env` from the `ENV_FILE` secret;
+   - writes the runtime `.env` from the `ENV_FILE` secret — the `.env` must
+     contain `ARIA_IMAGE=ghcr.io/<owner>/<image>:latest` telling
+     `docker-compose.prod.yml` which image to pull;
    - logs in to GHCR with the `GHCR_TOKEN` secret;
    - pulls the new image and runs `docker compose up -d --force-recreate`;
    - polls the container health check (`GET /health`) for up to 60 seconds;
@@ -50,7 +52,8 @@ with `packages: write` permission.
 
 `docker-compose.prod.yml` runs a single `fastapi` service:
 
-- image: `ghcr.io/<GHCR_IMAGE_NAME>:latest`;
+- image: `${ARIA_IMAGE}` from the runtime `.env` (falls back to a locally
+  built `aria-backend:local` when unset);
 - environment from the `.env` file in the deployment directory;
 - container-only port `8000` (exposed, not published) behind a health check;
 - on the user-defined bridge network `aria_backend`, with `proxy.aliases` /
