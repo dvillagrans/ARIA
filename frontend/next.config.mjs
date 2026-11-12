@@ -6,7 +6,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  allowedDevOrigins: ["100.124.11.63", "chi"],
+  // Hosts allowed to reach the Next.js dev server. Comma-separated via
+  // ALLOWED_DEV_ORIGINS; localhost-only by default. See .env.example.
+  allowedDevOrigins: (process.env.ALLOWED_DEV_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   turbopack: {
     root: __dirname,
   },

@@ -45,11 +45,10 @@ def create_app() -> FastAPI:
     # Metrics middleware: MUST be added before CORS so it sees every request.
     application.add_middleware(MetricsMiddleware)
 
-    # CORS: allow the Next.js dev server (localhost + Tailscale dev access).
-    # Set CORS_ORIGINS env var to override (comma-separated).
-    # Tighten origins before any production deployment.
-    _default_origins = "http://localhost:3000,http://chi:3000,http://100.124.11.63:3000,https://aria.dvillagrans.dev"
-    _cors_origins_raw = os.getenv("CORS_ORIGINS", _default_origins)
+    # CORS: allow the Next.js dev server (localhost only by default).
+    # Set CORS_ALLOWED_ORIGINS to a comma-separated list to add origins
+    # (e.g. a production frontend domain). See .env.example.
+    _cors_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
     _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
     application.add_middleware(
         CORSMiddleware,
