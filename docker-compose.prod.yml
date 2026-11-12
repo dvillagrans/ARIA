@@ -1,6 +1,8 @@
 services:
   fastapi:
-    image: ghcr.io/dvillagrans/aria-backend:latest
+    # Resolved from .env (ARIA_IMAGE), e.g. ghcr.io/<owner>/<image>:latest.
+    # If ARIA_IMAGE is unset the fallback expects a locally built image.
+    image: ${ARIA_IMAGE:-aria-backend:local}
     container_name: aria-fastapi
     env_file: .env
     expose:
