@@ -35,13 +35,13 @@ class QwenEmbeddingProvider(EmbeddingProvider):
 
     async def embed(self, text: str) -> list[float]:
         """
-        Embed a single text string and return a 1536-dimensional vector.
+        Embed a single text string and return a 4096-dimensional (EMBEDDING_DIM) vector.
 
         Args:
             text: The text to embed.
 
         Returns:
-            A list of 1536 floats.
+            A list of 4096 floats.
 
         Raises:
             EmbeddingError: On HTTP 4xx/5xx or dimension mismatch.
@@ -57,7 +57,7 @@ class QwenEmbeddingProvider(EmbeddingProvider):
             texts: List of texts to embed.
 
         Returns:
-            List of 1536-float vectors in the same order as input.
+            List of 4096-float vectors in the same order as input.
 
         Raises:
             EmbeddingError: If any item fails or dimension mismatches.
