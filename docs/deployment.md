@@ -61,6 +61,17 @@ with `packages: write` permission.
   remove or adapt them if you use a different proxy;
 - restart policy `unless-stopped`.
 
+## Upgrade note
+
+`docker-compose.prod.yml` now names the bridge network `aria_backend` (it used
+to rely on the Compose default, `aria_default`). A reverse proxy attached to
+the old `aria_default` network must join `aria_backend` before the next deploy,
+otherwise it can no longer reach `aria-fastapi`:
+
+```bash
+docker network connect aria_backend <proxy-container>
+```
+
 ## Manual operations
 
 ```bash

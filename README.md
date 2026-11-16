@@ -85,7 +85,8 @@ docker compose up fastapi --build
 cd frontend
 pnpm install
 pnpm dev
-# http://localhost:3000 — sign in with the seeded credentials
+# http://localhost:3000 — sign in with the user created by
+# supabase/seed_initial_user.sql (SEED_USER_EMAIL / SEED_USER_PASSWORD)
 ```
 
 ### 5. Observability stack (optional)
@@ -98,6 +99,11 @@ docker compose up prometheus grafana -d
 ## Environment variables
 
 Copy `.env.example` to `.env` and fill in real values. Key variables:
+
+> Frontend variables (`NEXT_PUBLIC_*`) belong in `frontend/.env.local`, not in
+> the root `.env`: `next dev` runs from `frontend/` and does not read the root
+> file (see `frontend/next.config.mjs`). Create `frontend/.env.local` with the
+> `NEXT_PUBLIC_*` entries below.
 
 | Variable | Placeholder | Description |
 |---|---|---|
