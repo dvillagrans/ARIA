@@ -46,8 +46,8 @@ def create_app() -> FastAPI:
     application.add_middleware(MetricsMiddleware)
 
     # CORS: allow the Next.js dev server (localhost only by default).
-    # Set CORS_ALLOWED_ORIGINS to a comma-separated list to add origins
-    # (e.g. a production frontend domain). See .env.example.
+    # Set CORS_ALLOWED_ORIGINS to a comma-separated list to replace the
+    # default allowlist (e.g. a production frontend domain). See .env.example.
     _cors_origins_raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
     _cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
     application.add_middleware(
